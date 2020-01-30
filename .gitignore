@@ -1,0 +1,15 @@
+/.gen
+*.o
+*.ali
+*.a
+*.so
+*.stderr
+*.stdout
+*.cswi
+b__*
+*.lexch
+messages.txt
+*-loc.xml
+*.bexch
+*.cgpr
+main
