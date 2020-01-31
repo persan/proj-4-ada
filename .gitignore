@@ -13,5 +13,6 @@ messages.txt
 *.bexch
 *.cgpr
 main
-proj-6.3.0/
 proj-6.3.0*
+target
+Makefile.conf

@@ -1,3 +1,8 @@
+GCC=$(shell which gcc)
+PREFIX?=$(shell dirname $(shell dirname ${GCC}}))
+
+-include Makefile.conf
+
 all:compile
 
 clean:
@@ -13,3 +18,13 @@ generate:
 	@cd  .gen; gcc -c gen.cpp -fdump-ada-spec -fada-spec-parent=libproj
 	@sed -f libproj.sed .gen/* -i
 	@cp  .gen/*-proj_h.ads src/gen/
+uninstall:
+	@-gprinstall --uninstall proj4 --prefix=${DESTDIR}${PREFIX} >/dev/null 2>&1;true
+
+install:uninstall
+	gprinstall -p -P proj4.gpr --prefix=${DESTDIR}${PREFIX}
+Makefile.conf:${GCC} Makefile
+	@echo "export PATH=${PATH}" >${@}
+
+x:
+	@echo ${PREFIX}
