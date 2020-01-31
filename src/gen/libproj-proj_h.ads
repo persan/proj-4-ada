@@ -446,7 +446,7 @@ package libproj.proj_h is
       nz : size_t;
       t : access double;
       st : size_t;
-      nt : size_t) return libproj.stddef_h.size_t  -- /usr/gnat/include/proj.h:393
+      nt : size_t) return size_t  -- /usr/gnat/include/proj.h:393
    with Import => True, 
         Convention => C, 
         External_Name => "proj_trans_generic";
