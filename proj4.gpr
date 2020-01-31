@@ -1,6 +1,6 @@
 -- The binding is built agains proj version 6.3.0
 -- Downloaded from https://proj.org/download.html
-
+with "libstdcpp.gpr";
 library project Proj4 is
    VERSION := "6.3.0";
 
