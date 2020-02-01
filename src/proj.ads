@@ -3,7 +3,9 @@ with GNAT.Strings;
 with Interfaces.C;
 with Interfaces.C.Strings;
 with System;
+
 private with Libproj.Proj_H;
+private with Ada.Unchecked_Conversion;
 package Proj4 is
    use Interfaces.C;
 
@@ -17,7 +19,7 @@ package Proj4 is
    type PJ_COORD;
    type PJ_AREA is tagged limited private;
 
-   type P5_FACTORS is record
+   type PJ_FACTORS is record
       Meridional_Scale        : Long_Float;
       Parallel_Scale          : Long_Float;
       Areal_Scale             : Long_Float;
@@ -30,10 +32,8 @@ package Proj4 is
       Dx_Dphi                 : Long_Float;
       Dy_Dlam                 : Long_Float;
       Dy_Dphi                 : Long_Float;
-   end record
-     with Convention => C_Pass_By_Copy;
+   end record;
 
-   subtype PJ_FACTORS is P5_FACTORS;
 
    type PJ (<>) is tagged limited private;
 
@@ -184,36 +184,23 @@ package Proj4 is
    type PJ_COORD_V_Array is array (0 .. 3) of Long_Float;
    type PJ_COORD (Discr : Unsigned := 0) is record
       case Discr is
-         when 0 =>
-            V    : aliased PJ_COORD_V_Array;
-         when 1 =>
-            Xyzt : aliased PJ_XYZT;
-         when 2 =>
-            Uvwt : aliased PJ_UVWT;
-         when 3 =>
-            Lpzt : aliased PJ_LPZT;
-         when 4 =>
-            Geod : aliased PJ_GEOD;
-         when 5 =>
-            Opk  : aliased PJ_OPK;
-         when 6 =>
-            Enu  : aliased PJ_ENU;
-         when 7 =>
-            Xyz  : aliased PJ_XYZ;
-         when 8 =>
-            Uvw  : aliased PJ_UVW;
-         when 9 =>
-            Lpz  : aliased PJ_LPZ;
-         when 10 =>
-            Xy   : aliased PJ_XY;
-         when 11 =>
-            Uv   : aliased PJ_UV;
-         when others =>
-            Lp   : aliased PJ_LP;
+         when 0 => V       : aliased PJ_COORD_V_Array;
+         when 1 => Xyzt    : aliased PJ_XYZT;
+         when 2 => Uvwt    : aliased PJ_UVWT;
+         when 3 => Lpzt    : aliased PJ_LPZT;
+         when 4 => Geod    : aliased PJ_GEOD;
+         when 5 => Opk     : aliased PJ_OPK;
+         when 6 => Enu     : aliased PJ_ENU;
+         when 7 => Xyz     : aliased PJ_XYZ;
+         when 8 => Uvw     : aliased PJ_UVW;
+         when 9 => Lpz     : aliased PJ_LPZ;
+         when 10 => Xy     : aliased PJ_XY;
+         when 11 => Uv     : aliased PJ_UV;
+         when others => Lp : aliased PJ_LP;
       end case;
    end record
-     with Convention => C_Pass_By_Copy,
-     Unchecked_Union => True;
+     with Unchecked_Union => True;
+
    type PJ_COORD_Array is array (Positive range <>) of aliased PJ_COORD;
 
    type PJ_INFO is record
@@ -237,9 +224,9 @@ package Proj4 is
    end record
      with Convention => C_Pass_By_Copy;
 
-   subtype PJ_GRID_INFO_Gridname_Array is Interfaces.C.Char_Array (0 .. 31);
-   subtype PJ_GRID_INFO_Filename_Array is Interfaces.C.Char_Array (0 .. 259);
-   subtype PJ_GRID_INFO_Format_Array is Interfaces.C.Char_Array (0 .. 7);
+   subtype PJ_GRID_INFO_Gridname_Array is String (1 .. 32);
+   subtype PJ_GRID_INFO_Filename_Array is String (1 .. 260);
+   subtype PJ_GRID_INFO_Format_Array is String (1 .. 8);
    type PJ_GRID_INFO is record
       Gridname   : aliased PJ_GRID_INFO_Gridname_Array;
       Filename   : aliased PJ_GRID_INFO_Filename_Array;
@@ -267,7 +254,7 @@ package Proj4 is
    end record
      with Convention => C_Pass_By_Copy;
 
-   subtype PJ_LOG_LEVEL is Unsigned;
+   type PJ_LOG_LEVEL is new  Unsigned;
    PJ_LOG_NONE : constant Unsigned := 0;
    PJ_LOG_ERROR : constant Unsigned := 1;
    PJ_LOG_DEBUG : constant Unsigned := 2;
@@ -276,6 +263,7 @@ package Proj4 is
    PJ_LOG_DEBUG_MAJOR : constant Unsigned := 2;
    PJ_LOG_DEBUG_MINOR : constant Unsigned := 3;
 
+   type Logger is interface;
    type PJ_LOG_FUNCTION is access procedure
      (Arg1 : System.Address;
       Arg2 : int;
@@ -422,53 +410,57 @@ package Proj4 is
       Dir       : DIRECTION;
       Coord     : PJ_COORD_Array) return Long_Float;
 
-   function Proj_Lp_Dist
-     (P : access constant PJ;
+   function Lp_Dist
+     (P : PJ;
       A : PJ_COORD;
-      B : PJ_COORD) return Double;
+      B : PJ_COORD) return Long_Float;
 
-   function Proj_Lpz_Dist
-     (P : access constant PJ;
+   function Lpz_Dist
+     (P : PJ;
       A : PJ_COORD;
-      B : PJ_COORD) return Double;
+      B : PJ_COORD) return Long_Float;
 
-   function Proj_Xy_Dist (A : PJ_COORD; B : PJ_COORD) return Double;
+   function Xy_Dist (A : PJ_COORD; B : PJ_COORD) return Long_Float;
 
-   function Proj_Xyz_Dist (A : PJ_COORD; B : PJ_COORD) return Double;
+   function Xyz_Dist (A : PJ_COORD; B : PJ_COORD) return Long_Float;
 
-   function Proj_Geod
-     (P : access constant PJ;
+   function Geod
+     (P : PJ;
       A : PJ_COORD;
       B : PJ_COORD) return PJ_COORD;
 
-   function Proj_Context_Errno (Ctx : access PJ_CONTEXT) return int;
+   type Status_Code is new Integer;
 
-   function Proj_Errno (P : access constant PJ) return int;
+   function Errno (Ctx : PJ_CONTEXT) return Status_Code;
 
-   function Proj_Errno_Set (P : access constant PJ; Err : int) return int;
+   function Errno (P :  PJ) return Status_Code;
 
-   function Proj_Errno_Reset (P : access constant PJ) return int;
+   function Errno_Set (P :  PJ; Err : Status_Code) return Status_Code;
 
-   function Proj_Errno_Restore (P : access constant PJ; Err : int) return int;
+   function Errno_Reset (P : PJ) return Status_Code;
 
-   function Proj_Errno_String (Err : int) return String;
+   function Errno_Restore (P : PJ; Err : Status_Code) return Status_Code;
 
-   function Proj_Log_Level (Ctx : access PJ_CONTEXT; Log_Level : PJ_LOG_LEVEL) return PJ_LOG_LEVEL;
+   function Errno_String (Err : Status_Code) return String;
+
+   function Log_Level (Ctx : PJ_CONTEXT; Log_Level : PJ_LOG_LEVEL) return PJ_LOG_LEVEL;
 
    procedure Proj_Log_Func
      (Ctx      : access PJ_CONTEXT;
       App_Data : System.Address;
       Logf     : PJ_LOG_FUNCTION);
 
-   function Proj_Factors (P : access PJ; Lp : PJ_COORD) return PJ_FACTORS;
+   function Factors (P : PJ; Lp : PJ_COORD) return PJ_FACTORS;
 
-   function Proj_Info return PJ_INFO;
+   function Info return PJ_INFO;
 
-   function Proj_Pj_Info (P : access PJ) return PJ_PROJ_INFO;
+   function Info (P : PJ) return PJ_PROJ_INFO;
 
-   function Proj_Grid_Info (Gridname : String) return PJ_GRID_INFO;
+   function Grid_Info (Gridname : String) return PJ_GRID_INFO;
 
    function Proj_Init_Info (Initname : String) return PJ_INIT_INFO;
+
+   -----------------------------------------------------------------------------
 
    function Proj_List_Operations return access constant PJ_OPERATIONS;
 
@@ -479,6 +471,7 @@ package Proj4 is
    function Proj_List_Angular_Units return access constant PJ_UNITS;
 
    function Proj_List_Prime_Meridians return access constant PJ_PRIME_MERIDIANS;
+   --------------------------------------------------------------------------------
 
    function Proj_Torad (Angle_In_Degrees : Double) return Double;
 
@@ -989,5 +982,28 @@ private
    end record;
    procedure Initialize (Object : in out PJ_AREA);
    procedure Finalize   (Object : in out PJ_AREA);
+
+   function Convert_Down is new Ada.Unchecked_Conversion (PJ_COORD, Libproj.Proj_H.PJ_COORD);
+   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_COORD, PJ_COORD);
+   pragma Compile_Time_Error (PJ_COORD'Size /= Libproj.Proj_H.PJ_COORD'Size, "Invalid maping of PJ_COORD");
+
+
+   function Convert_Down is new Ada.Unchecked_Conversion (PJ_FACTORS, Libproj.Proj_H.PJ_FACTORS);
+   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_FACTORS, PJ_FACTORS);
+   pragma Compile_Time_Error (PJ_FACTORS'Size /= Libproj.Proj_H.PJ_FACTORS'Size, "Invalid maping of PJ_FACTORS");
+
+
+   function Convert_Down is new Ada.Unchecked_Conversion (PJ_INFO, Libproj.Proj_H.PJ_INFO);
+   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_INFO, PJ_INFO);
+   pragma Compile_Time_Error (PJ_INFO'Size /= Libproj.Proj_H.PJ_INFO'Size, "Invalid maping of PJ_INFO");
+
+   function Convert_Down is new Ada.Unchecked_Conversion (PJ_PROJ_INFO, Libproj.Proj_H.PJ_PROJ_INFO);
+   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_PROJ_INFO, PJ_PROJ_INFO);
+   pragma Compile_Time_Error (PJ_PROJ_INFO'Size /= Libproj.Proj_H.PJ_PROJ_INFO'Size, "Invalid maping of PJ_PROJ_INFO");
+
+   function Convert_Down is new Ada.Unchecked_Conversion (PJ_GRID_INFO, Libproj.Proj_H.PJ_GRID_INFO);
+   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_GRID_INFO, PJ_GRID_INFO);
+   pragma Compile_Time_Error (PJ_GRID_INFO'Size /= Libproj.Proj_H.PJ_GRID_INFO'Size, "Invalid maping of PJ_GRID_INFO");
+
 
 end Proj4;

@@ -88,6 +88,10 @@ package body Proj4 is
    -- Proj_Create --
    -----------------
 
+   function Error_Message (I : int ) return String is
+   begin
+      return "[" & I'Img &  "]" & Interfaces.C.Strings.Value (Libproj.Proj_H.Proj_Errno_String (I));
+   end;
    function Create
      (Ctx : PJ_CONTEXT; Definition : String) return PJ'Class
    is
@@ -96,7 +100,7 @@ package body Proj4 is
       return Ret : Pj do
          Ret.Impl := Libproj.Proj_H.Proj_Create (Ctx.Impl, To_Chars_Ptr (Def));
          if Ret.Impl = null then
-            raise PROJ_ERROR with Libproj.Proj_H.Proj_Context_Errno (Ctx.Impl)'Img;
+            raise PROJ_ERROR with "[" & Libproj.Proj_H.Proj_Context_Errno (Ctx.Impl)'Img & "] " ;
          end if;
       end return;
    end Create;
@@ -276,9 +280,6 @@ package body Proj4 is
    ----------------
    -- Proj_Trans --
    ----------------
-   function Convert_Down is new Ada.Unchecked_Conversion (PJ_COORD, Libproj.Proj_H.PJ_COORD);
-   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_COORD, PJ_COORD);
-   pragma Compile_Time_Error (PJ_COORD'Size /= Libproj.Proj_H.PJ_COORD'Size, "Invalid maping of PJ_COORD");
 
    function Trans
      (P         : PJ;
@@ -338,163 +339,157 @@ package body Proj4 is
       Coord     : PJ_COORD_Array) return Long_Float
    is
    begin
-      return Long_Float(Libproj.Proj_H.Proj_Roundtrip (P.Impl, Direction_Map (Dir), Coord'Length, Convert_Down (Coord (Coord'First))'Unrestricted_Access));
+      return Long_Float (Libproj.Proj_H.Proj_Roundtrip
+                         (P         => P.Impl,
+                          Direction => Direction_Map (Dir),
+                          N         => Coord'Length,
+                          Coord     => Convert_Down (Coord (Coord'First))'Unrestricted_Access));
    end Roundtrip;
 
    ------------------
    -- Proj_Lp_Dist --
    ------------------
 
-   function Proj_Lp_Dist
-     (P : access constant PJ; A : PJ_COORD; B : PJ_COORD) return Double
+   function Lp_Dist
+     (P : PJ; A : PJ_COORD; B : PJ_COORD) return Long_Float
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Lp_Dist unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Lp_Dist";
-   end Proj_Lp_Dist;
+      return Long_Float (Libproj.Proj_H.Proj_Lp_Dist
+                         (P => P.Impl,
+                          A => Convert_Down (A),
+                          B => Convert_Down (B)));
+   end Lp_Dist;
 
    -------------------
-   -- Proj_Lpz_Dist --
+   -- Lpz_Dist --
    -------------------
 
-   function Proj_Lpz_Dist
-     (P : access constant PJ; A : PJ_COORD; B : PJ_COORD) return Double
+   function Lpz_Dist
+     (P : PJ; A : PJ_COORD; B : PJ_COORD) return Long_Float
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Lpz_Dist unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Lpz_Dist";
-   end Proj_Lpz_Dist;
+      return Long_Float (Libproj.Proj_H.Proj_Lpz_Dist
+                         (P => P.Impl,
+                          A => Convert_Down (A),
+                          B => Convert_Down (B)));
+   end Lpz_Dist;
 
    ------------------
    -- Proj_Xy_Dist --
    ------------------
 
-   function Proj_Xy_Dist (A : PJ_COORD; B : PJ_COORD) return Double is
+   function Xy_Dist (A : PJ_COORD; B : PJ_COORD) return Long_Float is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Xy_Dist unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Xy_Dist";
-   end Proj_Xy_Dist;
+      return Long_Float (Libproj.Proj_H.Proj_Xy_Dist
+                         (A => Convert_Down (A),
+                          B => Convert_Down (B)));
+   end Xy_Dist;
 
    -------------------
    -- Proj_Xyz_Dist --
    -------------------
 
-   function Proj_Xyz_Dist (A : PJ_COORD; B : PJ_COORD) return Double is
+   function Xyz_Dist (A : PJ_COORD; B : PJ_COORD) return Long_Float is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Xyz_Dist unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Xyz_Dist";
-   end Proj_Xyz_Dist;
+      return Long_Float (Libproj.Proj_H.Proj_Xyz_Dist
+                         (A => Convert_Down (A),
+                          B => Convert_Down (B)));
+   end Xyz_Dist;
 
    ---------------
    -- Proj_Geod --
    ---------------
 
-   function Proj_Geod
-     (P : access constant PJ; A : PJ_COORD; B : PJ_COORD) return PJ_COORD
+   function Geod
+     (P : PJ; A : PJ_COORD; B : PJ_COORD) return PJ_COORD
    is
    begin
-      pragma Compile_Time_Warning (Standard.True, "Proj_Geod unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Geod";
-   end Proj_Geod;
+      return Convert_Up (Libproj.Proj_H.Proj_Geod
+                         (P => P.Impl,
+                          A => Convert_Down (A),
+                          B => Convert_Down (B)));
+   end Geod;
 
    ------------------------
    -- Proj_Context_Errno --
    ------------------------
 
-   function Proj_Context_Errno (Ctx : access PJ_CONTEXT) return int is
+   function Errno (Ctx : PJ_CONTEXT) return Status_Code is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Context_Errno unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Context_Errno";
-   end Proj_Context_Errno;
+      return Status_Code (Libproj.Proj_H.Proj_Context_Errno (Ctx => Ctx.Impl));
+   end Errno;
 
    ----------------
    -- Proj_Errno --
    ----------------
 
-   function Proj_Errno (P : access constant PJ) return int is
+   function Errno (P : PJ) return Status_Code is
    begin
-      pragma Compile_Time_Warning (Standard.True, "Proj_Errno unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Errno";
-   end Proj_Errno;
+      return Status_Code (Libproj.Proj_H.Proj_Errno (P => P.Impl));
+   end Errno;
 
    --------------------
    -- Proj_Errno_Set --
    --------------------
 
-   function Proj_Errno_Set (P : access constant PJ; Err : int) return int is
+   function Errno_Set (P : PJ; Err : Status_Code) return Status_Code is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Errno_Set unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Errno_Set";
-   end Proj_Errno_Set;
+      return Status_Code (Libproj.Proj_H.Proj_Errno_Set (P => P.Impl, Err => int (Err)));
+   end Errno_Set;
 
    ----------------------
    -- Proj_Errno_Reset --
    ----------------------
 
-   function Proj_Errno_Reset (P : access constant PJ) return int is
+   function Errno_Reset (P : PJ) return Status_Code is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Errno_Reset unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Errno_Reset";
-   end Proj_Errno_Reset;
+      return Status_Code (Libproj.Proj_H.Proj_Errno_Reset (P => P.Impl));
+   end Errno_Reset;
 
    ------------------------
    -- Proj_Errno_Restore --
    ------------------------
 
-   function Proj_Errno_Restore (P : access constant PJ; Err : int) return int
+   function Errno_Restore (P : PJ; Err : Status_Code) return Status_Code
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Errno_Restore unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Errno_Restore";
-   end Proj_Errno_Restore;
+      return Status_Code (Proj_Errno_Restore (P => P.Impl, Err => int (Err)));
+   end Errno_Restore;
 
    -----------------------
    -- Proj_Errno_String --
    -----------------------
 
-   function Proj_Errno_String (Err : int) return String is
+   function Errno_String (Err : Status_Code) return String is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Errno_String unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Errno_String";
-   end Proj_Errno_String;
+      return Interfaces.C.Strings.Value (Libproj.Proj_H.Proj_Errno_String ( Err => int (Err)));
+   end Errno_String;
 
    --------------------
    -- Proj_Log_Level --
    --------------------
 
-   function Proj_Log_Level
-     (Ctx : access PJ_CONTEXT; Log_Level : PJ_LOG_LEVEL) return PJ_LOG_LEVEL
+   function Log_Level
+     (Ctx : PJ_CONTEXT; Log_Level : PJ_LOG_LEVEL) return PJ_LOG_LEVEL
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Log_Level unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Log_Level";
-   end Proj_Log_Level;
+      return PJ_LOG_LEVEL (Libproj.Proj_H.Proj_Log_Level
+                            (Ctx => Ctx.Impl,
+                             log_level => Libproj.Proj_H.PJ_LOG_LEVEL (Log_Level)));
+   end Log_Level;
 
    -------------------
    -- Proj_Log_Func --
    -------------------
 
    procedure Proj_Log_Func
-     (Ctx  : access PJ_CONTEXT; App_Data : System.Address;
+     (Ctx      : access PJ_CONTEXT;
+      App_Data : System.Address;
       Logf : PJ_LOG_FUNCTION)
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Log_Func unimplemented");
+      --        pragma Compile_Time_Warning (Standard.True,
+      --                                     "Proj_Log_Func unimplemented");
       raise Program_Error with "Unimplemented procedure Proj_Log_Func";
    end Proj_Log_Func;
 
@@ -502,44 +497,43 @@ package body Proj4 is
    -- Proj_Factors --
    ------------------
 
-   function Proj_Factors (P : access PJ; Lp : PJ_COORD) return PJ_FACTORS is
+
+   function Factors (P : PJ; Lp : PJ_COORD) return PJ_FACTORS is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Factors unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Factors";
-   end Proj_Factors;
+      return Convert_Up (Libproj.Proj_H.Proj_Factors (P => P.Impl, Lp => Convert_Down (Lp)));
+   end Factors;
 
    ---------------
    -- Proj_Info --
    ---------------
 
-   function Proj_Info return PJ_INFO is
+   function Info return PJ_INFO is
    begin
-      pragma Compile_Time_Warning (Standard.True, "Proj_Info unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Info";
-   end Proj_Info;
+      return Convert_Up (Libproj.Proj_H.Proj_Info);
+   end Info;
 
    ------------------
    -- Proj_Pj_Info --
    ------------------
 
-   function Proj_Pj_Info (P : access PJ) return PJ_PROJ_INFO is
+   function Info (P : PJ) return PJ_PROJ_INFO is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Pj_Info unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Pj_Info";
-   end Proj_Pj_Info;
+      return Convert_Up (Libproj.Proj_H.Proj_Pj_Info (P.Impl));
+   end Info;
 
    --------------------
    -- Proj_Grid_Info --
    --------------------
 
-   function Proj_Grid_Info (Gridname : String) return PJ_GRID_INFO is
+   function Grid_Info (Gridname : String) return PJ_GRID_INFO is
+      L_Gridname : Interfaces.C.Strings.chars_ptr;
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Grid_Info unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Grid_Info";
-   end Proj_Grid_Info;
+      return Ret : PJ_GRID_INFO do
+         L_Gridname := Interfaces.C.Strings.New_String (Gridname);
+         Ret := Convert_Up (Libproj.Proj_H.Proj_Grid_Info (Gridname => L_Gridname));
+         Interfaces.C.Strings.Free (L_Gridname);
+      end return;
+   end Grid_Info;
 
    --------------------
    -- Proj_Init_Info --

@@ -1,14 +1,14 @@
-with Proj4;
+with Proj;
 with Ada.Text_IO; use Ada.Text_IO;
 procedure Main is
-   Ctx  : Proj4.PJ_CONTEXT;
-   Proj : Proj4.PJ'Class := Ctx.Create ("+proj=etmerc +lat_0=38 +lon_0=125 +ellps=bessel");
+   Ctx  : Proj.PJ_CONTEXT;
+   Proj : Proj.PJ'Class := Ctx.Create ("+proj=etmerc +lat_0=38 +lon_0=125 +ellps=bessel");
 
-   C1   : Proj4.PJ_COORD := (Discr => 1, Xyzt => (0.20, 00.20, 0.20, 0.20));
-   C2   : Proj4.PJ_COORD := (Discr => 1, Xyzt => (11.0, 10.0, 10.0, 10.0));
-   C3   : Proj4.PJ_COORD;
+   C1   : Proj.PJ_COORD := (Discr => 1, Xyzt => (0.20, 00.20, 0.20, 0.20));
+   C2   : Proj.PJ_COORD := (Discr => 1, Xyzt => (11.0, 10.0, 10.0, 10.0));
+   C3   : Proj.PJ_COORD;
 
-   function Image ( Item : Proj4.PJ_XYZT ) return String is
+   function Image ( Item : Proj.PJ_XYZT ) return String is
    begin
       return
         "(X => " & Item.X'Img &
@@ -17,7 +17,7 @@ procedure Main is
         ",T => " & Item.T'Img & ")";
    end Image;
 
-   function Image ( Item : Proj4.PJ_COORD ) return String is
+   function Image ( Item : Proj.PJ_COORD ) return String is
    begin
       return Image (Item.Xyzt);
    end Image;
