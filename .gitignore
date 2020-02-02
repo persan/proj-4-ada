@@ -17,3 +17,4 @@ proj-6.3.0*
 target
 Makefile.conf
 *.pyc
+*main

@@ -1,5 +1,10 @@
+
 GCC=$(shell which gcc)
 PREFIX?=$(shell dirname $(shell dirname ${GCC}}))
+
+ifdef DESTDIR
+_DESTDIR:=$(abspath ${DESTDIR})
+endif
 
 -include Makefile.conf
 
@@ -7,6 +12,7 @@ all:compile
 
 clean:
 	git clean -xdf
+
 test:compile
 	${MAKE} -C examples/simple all
 
@@ -18,13 +24,16 @@ generate:
 	@cd  .gen; gcc -c gen.cpp -fdump-ada-spec -fada-spec-parent=libproj
 	@sed -f libproj.sed .gen/* -i
 	@cp  .gen/*-proj_h.ads src/gen/
+
 uninstall:
-	@-gprinstall --uninstall proj --prefix=${DESTDIR}${PREFIX} >/dev/null 2>&1;true
+	@-gprinstall --uninstall proj --prefix=${_DESTDIR}${PREFIX} >/dev/null 2>&1;true
 
 install:uninstall
-	gprinstall -p -P proj.gpr --prefix=${DESTDIR}${PREFIX}
+	gprinstall -p -P proj.gpr --prefix=${_DESTDIR}${PREFIX}
+
 Makefile.conf:${GCC} Makefile
 	@echo "export PATH=${PATH}" >${@}
 
+
 x:
-	@echo ${PREFIX}
+	echo ${_DESTDIR}

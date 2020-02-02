@@ -1,18 +1,18 @@
-with AUnit.Options;
-with AUnit.Test_Filters;
-with Ada.Text_IO; use Ada.Text_IO;
-with Aunit.Run;
-with GNAT.Strings;
-with AUnit.Reporter.Text;
-with AUnit.Reporter.XML;
 with Ada.Command_Line;
-with AUnit;
-with GNAT.Command_Line;
-with AUnit.Test_Filters.List_Filters;
 with Ada.Directories;
 
+with AUnit.Options;
+with AUnit.Reporter.Text;
+with AUnit.Reporter.XML;
+with Aunit.Run;
+with AUnit.Test_Filters.List_Filters;
+with AUnit.Test_Filters;
+with AUnit;
+
+with GNAT.Command_Line;
+with GNAT.Strings;
+
 procedure Aunit.run.Generic_runner is
-   use AUnit;
    use GNAT.Command_Line;
    use type GNAT.Strings.String_Access;
    DEFAULT_LIST        : constant String := "testlist.txt";
