@@ -1,26 +1,27 @@
 with "../proj.gpr";
 with "aunit.gpr";
 
-project Proj.Tests is
+project PROJ.Tests is
 
    for Source_Dirs use (".", "src/**");
    for Object_Dir use ".obj/" & project'Name;
    for Exec_Dir use "bin";
    for Main use ("proj-tests-main.ads");
-   for Languages use ("Ada", "Makefile", "Python");
+   for Languages use ("Ada", "Makefile", "Python", "Text");
 
    package Compiler is
-      for Driver ("python") use "";
-      for Driver ("makefile") use "";
-      for Driver ("text") use "";
+      for Driver ("Python") use "";
+      for Driver ("Makefile") use "";
+      for Driver ("Text") use "";
       for Switches ("ada") use ("-g", "-gnatwa");
    end Compiler;
 
    package Naming is
-      for Body_Suffix ("python") use ".py";
-      for Body_Suffix ("makefile") use ".mk";
-      for Body_Suffix ("text") use ".txt";
-      for Implementation_Exceptions ("makefile") use ("Makefile");
+      for Body_Suffix ("Python") use ".py";
+      for Body_Suffix ("Makefile") use ".mk";
+      for Body_Suffix ("Text") use ".txt";
+
+      for Implementation_Exceptions ("Makefile") use ("Makefile");
    end Naming;
 
    package Builder is
@@ -35,5 +36,5 @@ project Proj.Tests is
       for Switches ("ada") use ("-g");
    end Linker;
 
-end Proj.Tests;
+end PROJ.Tests;
 

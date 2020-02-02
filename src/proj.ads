@@ -4,10 +4,14 @@ with GNAT.Strings;
 with Interfaces.C;
 with Interfaces.C.Strings;
 with System;
-
+with Ada.Containers.Vectors;
 private with Libproj.Proj_H;
 private with Ada.Unchecked_Conversion;
 package PROJ is
+   package Unbounded_Vectors is new Ada.Containers.Vectors
+     (Index_Type   => Positive,
+      Element_Type => Ada.Strings.Unbounded.Unbounded_String,
+      "="          => Ada.Strings.Unbounded."=");
    use Interfaces.C;
 
    PROJ_VERSION_MAJOR : constant := 6;
@@ -203,14 +207,13 @@ package PROJ is
    type PJ_COORD_Array is array (Positive range <>) of aliased PJ_COORD;
 
    type PJ_INFO is record
-      Major      : aliased int;
-      Minor      : aliased int;
-      Patch      : aliased int;
-      Release    : Interfaces.C.Strings.chars_ptr;
-      Version    : Interfaces.C.Strings.chars_ptr;
-      Searchpath : Interfaces.C.Strings.chars_ptr;
-      Paths      : System.Address;
-      Path_Count : aliased Size_T;
+      Major      : Integer;
+      Minor      : Integer;
+      Patch      : Integer;
+      Release    : Ada.Strings.Unbounded.Unbounded_String;
+      Version    : Ada.Strings.Unbounded.Unbounded_String;
+      Searchpath : Ada.Strings.Unbounded.Unbounded_String;
+      Paths      : Unbounded_Vectors.Vector;
    end record
      with Convention => C_Pass_By_Copy;
 

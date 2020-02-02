@@ -1,5 +1,5 @@
 with Proj.Conversions;
-with LibPROJ.Proj_H;
+-- with LibPROJ.Proj_H;
 package body PROJ is
 
 -- Validate that the specs are comptible
@@ -20,7 +20,7 @@ package body PROJ is
       Proj_Cleanup;
    end;
 
-   Controler : Package_Controler;
+   Controler : Package_Controler with Warnings => Off;
    use Proj.Conversions;
    ----------------
    -- Pj_Release --

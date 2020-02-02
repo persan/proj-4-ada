@@ -10,9 +10,9 @@ private package Proj.Conversions is
    pragma Compile_Time_Error (PJ_FACTORS'Size /= Libproj.Proj_H.PJ_FACTORS'Size, "Invalid maping of PJ_FACTORS");
 
 
-   function Convert_Down is new Ada.Unchecked_Conversion (PJ_INFO, Libproj.Proj_H.PJ_INFO);
-   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_INFO, PJ_INFO);
-   pragma Compile_Time_Error (PJ_INFO'Size /= Libproj.Proj_H.PJ_INFO'Size, "Invalid maping of PJ_INFO");
+   function Convert_Up (Source : Libproj.Proj_H.PJ_INFO) return PJ_INFO;
+   function Convert_Down (Source : PJ_INFO) return Libproj.Proj_H.PJ_INFO;
+
 
    function Convert_Down is new Ada.Unchecked_Conversion (PJ_PROJ_INFO, Libproj.Proj_H.PJ_PROJ_INFO);
    function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_PROJ_INFO, PJ_PROJ_INFO);
@@ -42,5 +42,8 @@ private package Proj.Conversions is
 
    function Convert_Up (Source : Interfaces.C.int) return Boolean;
    function Convert_Down (Source : Boolean) return Interfaces.C.int;
+
+   function Convert_Up (Source : Interfaces.C.int) return Integer is (Integer (Source));
+   function Convert_Down (Source : Integer ) return Interfaces.C.int is (Interfaces.C.int (Source));
 
 end Proj.Conversions;
