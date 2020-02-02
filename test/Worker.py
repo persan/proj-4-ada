@@ -27,7 +27,14 @@ SUIT_WITH="with %(full_name)s;"
 SUIT_TEST_DECL="   T_%(name)s : aliased %(full_name)s.Test_Case;"
 SUIT_TEST_ADD= "      S.Add_Test(T_%(name)s'Access);"
 
-SPEC = """with AUnit.Test_Cases;
+SPEC = """--  ----------------------------------------------------------------------------
+--
+--  This file is an generated as a starting point for unitiest of Ada-PROJ
+--  from the c++ unit tests.
+--
+--  ----------------------------------------------------------------------------
+
+with AUnit.Test_Cases;
 with AUnit; use AUnit;
 package %(name)s is
    type Test_Case is new AUnit.Test_Cases.Test_Case with record
@@ -48,7 +55,14 @@ TEST_ROUTINE = """
 TEST_REGISTRATION = """      Registration.Register_Routine (Test, %(routine_name)s'Access, "%(routine_name)s");
 """
 
-BODY = """with AUnit.Test_Cases;
+BODY = """--  ----------------------------------------------------------------------------
+--
+--  This file is an generated as a starting point for unitiest of Ada-PROJ
+--  from the c++ unit tests.
+--
+--  ----------------------------------------------------------------------------
+
+with AUnit.Test_Cases;
 with AUnit.Test_Cases;
 with AUnit; 
 with GNAT.Source_Info;
@@ -73,12 +87,13 @@ package body %(name)s is
 end %(name)s;"""
 
 class TestGenerator:
-    def __init__(self,sourcedir,targetdir):
+    def __init__(self,sourcedir,targetdir,replace=False):
         if not exists(targetdir):
             os.mkdir(targetdir);
         self.sourcedir=sourcedir
         self.targetdir=targetdir
         self.tests=[]
+        self.replace=replace
         self.prefix = "PROJ.Tests.%s"
     def generate_test_suit(self, suit_name = "Test_Suit"):
         withs=[]
@@ -103,6 +118,11 @@ class TestGenerator:
     def ada2file(self,name):
         return name.lower().replace(".","-")
     def _write(self,path,image):
+        if exists(path):
+            if not self.replace:
+                return
+            else:
+                print ("Replacing %s", name)
         with open(path,"w") as outf:
             outf.write(image)
         
@@ -120,7 +140,8 @@ class TestGenerator:
         test_registrations = []
         matcher=re.compile("^(TEST\((\w+), (\w+)\) \{|(\}))$")
         in_routine=False
-        
+        if name == "main":
+            return
         with open(src) as inf:
             for line in inf:
                 # line=line.strip()
@@ -151,4 +172,4 @@ class TestGenerator:
             self.generate_test_case(src)
         self.generate_test_suit()
         
-TestGenerator("src","src/TestCases").main()
+TestGenerator("../PROJ/test/unit","src/TestCases",False).main()

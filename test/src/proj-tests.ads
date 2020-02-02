@@ -1,2 +1,2 @@
-package PROJ.Tests is
+private package PROJ.Tests is
 end PROJ.Tests;

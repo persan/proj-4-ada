@@ -7,7 +7,7 @@
 
 with AUnit.Test_Cases;
 with AUnit; use AUnit;
-package PROJ.Tests.pj_transform_test is
+package PROJ.Tests.test_c_api is
    type Test_Case is new AUnit.Test_Cases.Test_Case with record
       null;
    end record;
@@ -15,4 +15,4 @@ package PROJ.Tests.pj_transform_test is
    function Name (Test : Test_Case) return Message_String;
    procedure Register_Tests (Test : in out Test_Case);
 
-end PROJ.Tests.pj_transform_test;
+end PROJ.Tests.test_c_api;

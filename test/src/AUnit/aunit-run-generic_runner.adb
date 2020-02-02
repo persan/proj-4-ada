@@ -15,18 +15,20 @@ procedure Aunit.run.Generic_runner is
    use AUnit;
    use GNAT.Command_Line;
    use type GNAT.Strings.String_Access;
+   DEFAULT_LIST        : constant String := "testlist.txt";
 
    function Run is new AUnit.Run.Test_Runner_With_Status (Suite);
    Text_Reporter       : aliased AUnit.Reporter.Text.Text_Reporter;
    XML_Reporter        : aliased AUnit.Reporter.XML.XML_Reporter;
+
    Options             : aliased AUnit.Options.AUnit_Options := AUnit.Options.Default_Options;
    Filter              : aliased AUnit.Test_Filters.List_Filters.List_Filter;
    Filter_Path         : aliased GNAT.Strings.String_Access;
-   Command_Line_Config : Command_Line_Configuration;
-   DEFAULT_LIST        : constant String := "testlist.txt";
    Test_List_Save      : aliased GNAT.Strings.String_Access;
    Use_Text            : aliased Boolean := True;
    Use_XML             : aliased Boolean := False;
+
+   Command_Line_Config : Command_Line_Configuration;
 
    type Reporter_Access is access all AUnit.Reporter.Reporter'Class;
    Reporter : Reporter_Access := Text_Reporter'Unrestricted_Access;

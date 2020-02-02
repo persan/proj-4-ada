@@ -9,7 +9,7 @@ with AUnit.Test_Cases;
 with AUnit.Test_Cases;
 with AUnit; 
 with GNAT.Source_Info;
-package body PROJ.Tests.test_grids is
+package body PROJ.Tests.test_c_api is
    use AUnit;
    use AUnit.Test_Cases;
 
@@ -27,4 +27,4 @@ package body PROJ.Tests.test_grids is
 
    end Register_Tests;
 
-end PROJ.Tests.test_grids;
+end PROJ.Tests.test_c_api;

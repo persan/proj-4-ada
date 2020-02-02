@@ -121,7 +121,7 @@ package body PROJ is
       return Ret : Pj do
          Ret.Impl := Libproj.Proj_H.Proj_Create (Ctx.Impl, To_Chars_Ptr (Def));
          if Ret.Impl = null then
-            raise PROJ_ERROR with "[" & Libproj.Proj_H.Proj_Context_Errno (Ctx.Impl)'Img & "] " ;
+            raise PROJ_ERROR with "[" & Ctx.Errno'Img & "] " & Errno_String (Ctx.Errno);
          end if;
       end return;
    end Create;

@@ -1,3 +1,10 @@
+--  ----------------------------------------------------------------------------
+--
+--  This file is an generated as a starting point for unitiest of Ada-PROJ
+--  from the c++ unit tests.
+--
+--  ----------------------------------------------------------------------------
+
 with AUnit.Test_Cases;
 with AUnit; use AUnit;
 package PROJ.Tests.test_metadata is

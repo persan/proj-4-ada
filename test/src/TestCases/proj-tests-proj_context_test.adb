@@ -1,3 +1,10 @@
+--  ----------------------------------------------------------------------------
+--
+--  This file is an generated as a starting point for unitiest of Ada-PROJ
+--  from the c++ unit tests.
+--
+--  ----------------------------------------------------------------------------
+
 with AUnit.Test_Cases;
 with AUnit.Test_Cases;
 with AUnit; 
@@ -15,7 +22,13 @@ package body PROJ.Tests.proj_context_test is
 
    procedure proj_context_proj_context_set_file_finder (Test : in out AUnit.Test_Cases.Test_Case'Class) is
    begin
-      null;
+      declare
+      Ctx : Proj.PJ_CONTEXT;
+      P   : Proj.PJ'Class := Ctx.Create ("+init=temp_proj_dic1:MY_PIPELINE");
+      begin
+         null;
+      end;
+      
 --  
 --  std::string dirname;
 --  auto filename = createTempDict(dirname, "temp_proj_dic1");
