@@ -11,7 +11,7 @@ test:compile
 	${MAKE} -C examples/simple all
 
 compile:
-	gprbuild -p -j0 -P proj4.gpr
+	gprbuild -p -j0 -P proj.gpr
 generate:
 	@rm -rf src/gen .gen; mkdir -p .gen src/gen
 	@echo "#include <proj.h>" >.gen/gen.cpp
@@ -19,10 +19,10 @@ generate:
 	@sed -f libproj.sed .gen/* -i
 	@cp  .gen/*-proj_h.ads src/gen/
 uninstall:
-	@-gprinstall --uninstall proj4 --prefix=${DESTDIR}${PREFIX} >/dev/null 2>&1;true
+	@-gprinstall --uninstall proj --prefix=${DESTDIR}${PREFIX} >/dev/null 2>&1;true
 
 install:uninstall
-	gprinstall -p -P proj4.gpr --prefix=${DESTDIR}${PREFIX}
+	gprinstall -p -P proj.gpr --prefix=${DESTDIR}${PREFIX}
 Makefile.conf:${GCC} Makefile
 	@echo "export PATH=${PATH}" >${@}
 

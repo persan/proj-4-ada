@@ -1,0 +1,16 @@
+#PROJ.Tests.gie_self_tests
+#PROJ.Tests.pj_phi2_test
+#PROJ.Tests.pj_transform_test
+#PROJ.Tests.proj_angular_io_test
+PROJ.Tests.proj_context_test
+#PROJ.Tests.proj_errno_string_test
+#PROJ.Tests.test_common
+#PROJ.Tests.test_crs
+#PROJ.Tests.test_datum
+#PROJ.Tests.test_factory
+#PROJ.Tests.test_io
+#PROJ.Tests.test_metadata
+#PROJ.Tests.test_network
+#PROJ.Tests.test_operation
+#PROJ.Tests.test_util
+

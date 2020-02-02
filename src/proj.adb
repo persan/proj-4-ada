@@ -1,7 +1,27 @@
-with Ada.Unchecked_Conversion;
-with Libproj.Proj_H;
-package body Proj4 is
-   use Libproj.Proj_H;
+with Proj.Conversions;
+with LibPROJ.Proj_H;
+package body PROJ is
+
+-- Validate that the specs are comptible
+--
+   pragma Compile_Time_Error (PROJ_VERSION_MAJOR /= Libproj.Proj_H.PROJ_VERSION_MAJOR, "PROJ_VERSION_MAJOR Does not match");
+   pragma Compile_Time_Error (PROJ_VERSION_MINOR /= Libproj.Proj_H.PROJ_VERSION_MINOR, "PROJ_VERSION_MINOR Does not match");
+   pragma Compile_Time_Error (PROJ_VERSION_PATCH /= Libproj.Proj_H.PROJ_VERSION_PATCH, "PROJ_VERSION_PATCH Does not match");
+
+
+
+   procedure Initialize (Object : in out Package_Controler) is
+   begin
+      null;
+   end;
+
+   procedure Finalize   (Object : in out Package_Controler) is
+   begin
+      Proj_Cleanup;
+   end;
+
+   Controler : Package_Controler;
+   use Proj.Conversions;
    ----------------
    -- Pj_Release --
    ----------------
@@ -17,13 +37,14 @@ package body Proj4 is
    -------------------------
    procedure Initialize (Object : in out PJ_CONTEXT) is
    begin
-      Object.Impl := Proj_Context_Create;
+      Object.Impl := Libproj.Proj_H.Proj_Context_Create;
    end;
    procedure Finalize   (Object : in out PJ_CONTEXT) is
    begin
-      Object.Impl := Proj_Context_Destroy (Ctx => Object.Impl);
+      Object.Impl := Libproj.Proj_H.Proj_Context_Destroy (Ctx => Object.Impl);
       Object.Impl := null;
    end;
+
 
 
 
@@ -45,9 +66,9 @@ package body Proj4 is
          return Interfaces.C.Strings.Null_Ptr;
       end;
    begin
-      Proj_Context_Set_File_Finder (Ctx       => Ctx.Impl,
-                                    Finder    => Local_Finder'Unrestricted_Access,
-                                    User_Data => User_Data'Address);
+      Libproj.Proj_H.Proj_Context_Set_File_Finder (Ctx       => Ctx.Impl,
+                                                   Finder    => Local_Finder'Unrestricted_Access,
+                                                   User_Data => User_Data'Address);
    end;
 
    procedure Set_Search_Paths
@@ -110,8 +131,8 @@ package body Proj4 is
    ----------------------
 
    function Create
-     (Ctx : PJ_CONTEXT; Argv : GNAT.Strings.String_List)
-      return PJ'Class
+     (Argv : GNAT.Strings.String_List;
+      Ctx  : PJ_CONTEXT'Class := DEFAULT_CONTEXT) return PJ
    is
    begin
       return Ret : Pj do
@@ -127,10 +148,10 @@ package body Proj4 is
    ----------------------------
 
    function Create
-     (Ctx        : PJ_CONTEXT;
-      Source_Crs : String;
+     (Source_Crs : String;
       Target_Crs : String;
-      Area       : PJ_AREA'Class) return PJ'Class
+      Area       : PJ_AREA'Class;
+      Ctx  : PJ_CONTEXT'Class := DEFAULT_CONTEXT) return PJ
    is
       Src : constant String := Source_Crs & ASCII.Nul;
       Tgt : constant String := Target_Crs & ASCII.Nul;
@@ -152,11 +173,11 @@ package body Proj4 is
    ------------------------------------
 
    function Create
-     (Ctx        : PJ_CONTEXT;
-      Source_Crs : PJ'Class;
+     (Source_Crs : PJ'Class;
       Target_Crs : PJ'Class;
       Area       : PJ_AREA'Class;
-      Options    : System.Address) return PJ'Class
+      Options    : System.Address;
+      Ctx        : PJ_CONTEXT'Class := DEFAULT_CONTEXT) return PJ
    is
    begin
       return Ret : Pj do
@@ -184,7 +205,7 @@ package body Proj4 is
    --------------------------------------
 
    function Normalize_For_Visualization
-     (Ctx : PJ_CONTEXT; Obj : PJ'Class) return PJ'Class
+     (Obj : PJ; Ctx  : PJ_CONTEXT'Class := DEFAULT_CONTEXT) return PJ'Class
    is
    begin
       return Ret : Pj do
@@ -210,12 +231,11 @@ package body Proj4 is
    -- Proj_Destroy --
    ------------------
 
-   function Destroy (P : PJ) return PJ'Class is
+   procedure Destroy (P : PJ) is
+      Dummy : PJ_Access;
    begin
-      return Ret : Pj do
-         Ret.Impl := Libproj.Proj_H.Proj_Destroy
-           (P => P.Impl);
-      end return;
+      Dummy := Libproj.Proj_H.Proj_Destroy
+        (P => P.Impl);
    end Destroy;
 
    ----------------------
@@ -453,7 +473,7 @@ package body Proj4 is
    function Errno_Restore (P : PJ; Err : Status_Code) return Status_Code
    is
    begin
-      return Status_Code (Proj_Errno_Restore (P => P.Impl, Err => int (Err)));
+      return Status_Code (Libproj.Proj_H.Proj_Errno_Restore (P => P.Impl, Err => int (Err)));
    end Errno_Restore;
 
    -----------------------
@@ -474,8 +494,8 @@ package body Proj4 is
    is
    begin
       return PJ_LOG_LEVEL (Libproj.Proj_H.Proj_Log_Level
-                            (Ctx => Ctx.Impl,
-                             log_level => Libproj.Proj_H.PJ_LOG_LEVEL (Log_Level)));
+                           (Ctx       => Ctx.Impl,
+                            Log_Level => Libproj.Proj_H.PJ_LOG_LEVEL (Log_Level)));
    end Log_Level;
 
    -------------------
@@ -485,7 +505,7 @@ package body Proj4 is
    procedure Proj_Log_Func
      (Ctx      : access PJ_CONTEXT;
       App_Data : System.Address;
-      Logf : PJ_LOG_FUNCTION)
+      Logf     : PJ_LOG_FUNCTION)
    is
    begin
       --        pragma Compile_Time_Warning (Standard.True,
@@ -539,113 +559,89 @@ package body Proj4 is
    -- Proj_Init_Info --
    --------------------
 
-   function Proj_Init_Info (Initname : String) return PJ_INIT_INFO is
+   function Init_Info (Initname : String) return PJ_INIT_INFO is
+      L_Initname : Interfaces.C.Strings.chars_ptr;
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Init_Info unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Init_Info";
-   end Proj_Init_Info;
+      return Ret : PJ_INIT_INFO do
+         L_Initname := Interfaces.C.Strings.New_String (Initname);
+         Ret := Convert_Up (Libproj.Proj_H.Proj_Init_Info (Initname => L_Initname));
+         Interfaces.C.Strings.Free (L_Initname);
+      end return;
+   end Init_Info;
 
-   --------------------------
-   -- Proj_List_Operations --
-   --------------------------
-
-   function Proj_List_Operations return access constant PJ_OPERATIONS is
-   begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_List_Operations unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_List_Operations";
-   end Proj_List_Operations;
 
    ---------------------
    -- Proj_List_Ellps --
    ---------------------
 
-   function Proj_List_Ellps return access constant PJ_ELLPS is
+   function List_Ellps return PJ_ELLPS is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_List_Ellps unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_List_Ellps";
-   end Proj_List_Ellps;
+      return Convert_Up (Libproj.Proj_H.Proj_List_Ellps.all);
+   end List_Ellps;
 
    ---------------------
    -- Proj_List_Units --
    ---------------------
 
-   function Proj_List_Units return access constant PJ_UNITS is
+   function List_Units return PJ_UNITS is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_List_Units unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_List_Units";
-   end Proj_List_Units;
+      return Convert_Up (Libproj.Proj_H.Proj_List_Units.all);
+   end List_Units;
 
    -----------------------------
    -- Proj_List_Angular_Units --
    -----------------------------
 
-   function Proj_List_Angular_Units return access constant PJ_UNITS is
+   function List_Angular_Units return PJ_UNITS is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_List_Angular_Units unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_List_Angular_Units";
-   end Proj_List_Angular_Units;
+      return Convert_Up (Libproj.Proj_H.Proj_List_Angular_Units.all);
+   end List_Angular_Units;
 
    -------------------------------
    -- Proj_List_Prime_Meridians --
    -------------------------------
 
-   function Proj_List_Prime_Meridians return access constant PJ_PRIME_MERIDIANS
+   function List_Prime_Meridians return PJ_PRIME_MERIDIANS
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_List_Prime_Meridians unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_List_Prime_Meridians";
-   end Proj_List_Prime_Meridians;
+      return Convert_Up (Libproj.Proj_H.Proj_List_Prime_Meridians.all);
+   end List_Prime_Meridians;
 
    ----------------
    -- Proj_Torad --
    ----------------
 
-   function Proj_Torad (Angle_In_Degrees : Double) return Double is
+   function Torad (Angle_In_Degrees : Long_Float) return Long_Float is
    begin
-      pragma Compile_Time_Warning (Standard.True, "Proj_Torad unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Torad";
-   end Proj_Torad;
+      return Long_Float (Libproj.Proj_H.Proj_Torad (Double (Angle_In_Degrees)));
+   end Torad;
 
    ----------------
    -- Proj_Todeg --
    ----------------
 
-   function Proj_Todeg (Angle_In_Radians : Double) return Double is
+   function Todeg (Angle_In_Radians : Long_Float) return Long_Float is
    begin
-      pragma Compile_Time_Warning (Standard.True, "Proj_Todeg unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Todeg";
-   end Proj_Todeg;
+      return Long_Float (Libproj.Proj_H.Proj_Todeg (Double (Angle_In_Radians)));
+   end Todeg;
 
-   -----------------
-   -- Proj_Dmstor --
-   -----------------
-
-   function Proj_Dmstor (C_Is : String; Rs : System.Address) return Double is
-   begin
-      pragma Compile_Time_Warning (Standard.True, "Proj_Dmstor unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Dmstor";
-   end Proj_Dmstor;
 
    -----------------
    -- Proj_Rtodms --
    -----------------
 
-   function Proj_Rtodms
-     (S : String; R : Double; Pos : int; Neg : int) return String
+   function Rtodms
+     (R : Double; Pos : Character; Neg : Character) return String
    is
+      Dummy_Real_Buffer : String (1 .. 1024);
+      Buffer : Interfaces.C.Strings.chars_ptr := To_Chars_Ptr (Dummy_Real_Buffer);
    begin
-      pragma Compile_Time_Warning (Standard.True, "Proj_Rtodms unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Rtodms";
-   end Proj_Rtodms;
+      Buffer := Libproj.Proj_H.Proj_Rtodms (S   => Buffer,
+                             R   => Double (R),
+                             Pos => Character'Pos(Pos),
+                             Neg => Character'Pos (Neg));
+      return Interfaces.C.Strings.Value (Buffer);
+   end Rtodms;
 
    ------------------
    -- Proj_Cleanup --
@@ -653,44 +649,45 @@ package body Proj4 is
 
    procedure Proj_Cleanup is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Cleanup unimplemented");
-      raise Program_Error with "Unimplemented procedure Proj_Cleanup";
+      Libproj.Proj_H.Proj_Cleanup;
    end Proj_Cleanup;
 
    ------------------------------
    -- Proj_String_List_Destroy --
    ------------------------------
 
-   procedure Proj_String_List_Destroy (List : PROJ_STRING_LIST) is
+
+   procedure Initialize (Object : in out PROJ_STRING_LIST) is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_String_List_Destroy unimplemented");
-      raise Program_Error
-        with "Unimplemented procedure Proj_String_List_Destroy";
-   end Proj_String_List_Destroy;
+      null;
+   end;
+
+   procedure Finalize   (Object : in out PROJ_STRING_LIST) is
+   begin
+      Libproj.Proj_H.Proj_String_List_Destroy (Object.Impl);
+   end;
 
    -----------------------------------------
    -- Proj_Context_Set_Autoclose_Database --
    -----------------------------------------
 
-   procedure Proj_Context_Set_Autoclose_Database
-     (Ctx : access PJ_CONTEXT; Autoclose : int)
+   procedure Set_Autoclose_Database
+     (Ctx :  PJ_CONTEXT; Autoclose : Boolean := True)
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Context_Set_Autoclose_Database unimplemented");
-      raise Program_Error
-        with "Unimplemented procedure Proj_Context_Set_Autoclose_Database";
-   end Proj_Context_Set_Autoclose_Database;
+      Libproj.Proj_H.Proj_Context_Set_Autoclose_Database (Ctx.Impl, Boolean'Pos (Autoclose));
+   end Set_Autoclose_Database;
 
    ------------------------------------
    -- Proj_Context_Set_Database_Path --
    ------------------------------------
+   pragma Warnings (Off);
 
    function Proj_Context_Set_Database_Path
-     (Ctx     : access PJ_CONTEXT; DbPath : String; AuxDbPaths : System.Address;
-      Options : System.Address) return int
+     (Ctx        : access PJ_CONTEXT;
+      DbPath     : String;
+      AuxDbPaths : System.Address;
+      Options    : System.Address) return int
    is
    begin
       pragma Compile_Time_Warning (Standard.True,
@@ -718,7 +715,8 @@ package body Proj4 is
    ----------------------------------------
 
    function Proj_Context_Get_Database_Metadata
-     (Ctx : access PJ_CONTEXT; Key : String) return String
+     (Ctx : access PJ_CONTEXT;
+      Key : String) return String
    is
    begin
       pragma Compile_Time_Warning (Standard.True,
@@ -732,7 +730,8 @@ package body Proj4 is
    ------------------------------------
 
    function Proj_Context_Guess_Wkt_Dialect
-     (Ctx : access PJ_CONTEXT; Wkt : String) return PJ_GUESSED_WKT_DIALECT
+     (Ctx : access PJ_CONTEXT;
+      Wkt : String) return PJ_GUESSED_WKT_DIALECT
    is
    begin
       pragma Compile_Time_Warning (Standard.True,
@@ -802,10 +801,14 @@ package body Proj4 is
    --------------------------------------
 
    function Proj_Grid_Get_Info_From_Database
-     (Ctx              : access PJ_CONTEXT; Grid_Name : String;
-      Out_Full_Name    : System.Address; Out_Package_Name : System.Address;
-      Out_Url          : System.Address; Out_Direct_Download : access int;
-      Out_Open_License : access int; Out_Available : access int) return int
+     (Ctx                 : access PJ_CONTEXT;
+      Grid_Name           : String;
+      Out_Full_Name       : System.Address;
+      Out_Package_Name    : System.Address;
+      Out_Url             : System.Address;
+      Out_Direct_Download : access int;
+      Out_Open_License    : access int;
+      Out_Available       : access int) return int
    is
    begin
       pragma Compile_Time_Warning (Standard.True,
@@ -822,8 +825,9 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Obj : PJ'Class) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True, "Proj_Clone unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Clone";
+      return Ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Clone (ctx => Ctx.Impl,Obj => Obj.Impl);
+      end return;
    end Proj_Clone;
 
    ---------------------------
@@ -831,9 +835,14 @@ package body Proj4 is
    ---------------------------
 
    function Proj_Create_From_Name
-     (Ctx              : access PJ_CONTEXT; Auth_Name : String; SearchedName : String;
-      Types            : access PJ_TYPE; TypesCount : Size_T; ApproximateMatch : int;
-      LimitResultCount : Size_T; Options : System.Address)
+     (Ctx              : access PJ_CONTEXT;
+      Auth_Name        : String;
+      SearchedName     : String;
+      Types            : access PJ_TYPE;
+      TypesCount       : Size_T;
+      ApproximateMatch : int;
+      LimitResultCount : Size_T;
+      Options          : System.Address)
       return access PJ_OBJ_LIST
    is
    begin
@@ -847,23 +856,18 @@ package body Proj4 is
    -- Proj_Get_Type --
    -------------------
 
-   function Proj_Get_Type (Obj : access constant PJ) return PJ_TYPE is
+   function Proj_Get_Type (Obj : PJ) return PJ_TYPE is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Get_Type unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Get_Type";
+      return Convert_Up (Libproj.Proj_H.Proj_Get_Type (Obj.Impl));
    end Proj_Get_Type;
 
    ------------------------
    -- Proj_Is_Deprecated --
    ------------------------
 
-   function Proj_Is_Deprecated (Obj : access constant PJ) return Boolean is
+   function Proj_Is_Deprecated (Obj :  PJ) return Boolean is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Is_Deprecated unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Is_Deprecated";
+      return Convert_Up (Libproj.Proj_H.Proj_Is_Deprecated (Obj => Obj.Impl));
    end Proj_Is_Deprecated;
 
    -----------------------------
@@ -885,32 +889,34 @@ package body Proj4 is
    ---------------------------
 
    function Proj_Is_Equivalent_To
-     (Obj       : access constant PJ; Other : access constant PJ;
+     (Obj       : access constant PJ;
+      Other     : access constant PJ;
       Criterion : PJ_COMPARISON_CRITERION) return Boolean
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Is_Equivalent_To unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Is_Equivalent_To";
+      return Libproj.Proj_H.Proj_Is_Equivalent_To
+        (Obj       => Obj.Impl,
+         Other     => Other.Impl,
+         Criterion => Convert_Down (Criterion)) /= 0;
    end Proj_Is_Equivalent_To;
 
    ------------------------------------
    -- Proj_Is_Equivalent_To_With_Ctx --
    ------------------------------------
 
-   function Proj_Is_Equivalent_To_With_Ctx
+   function Proj_Is_Equivalent_To
      (Ctx       : PJ_CONTEXT;
       Obj       : PJ'Class;
       Other     : PJ'Class;
       Criterion : PJ_COMPARISON_CRITERION) return Boolean
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Is_Equivalent_To_With_Ctx unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Is_Equivalent_To_With_Ctx";
-   end Proj_Is_Equivalent_To_With_Ctx;
+      return Libproj.Proj_H.Proj_Is_Equivalent_To_With_Ctx
+        (Ctx       =>  Ctx.Impl,
+         Obj       => Obj.Impl,
+         Other     => Other.Impl,
+         Criterion => Convert_Down (Criterion)) /= 0;
+   end Proj_Is_Equivalent_To;
 
    -----------------
    -- Proj_Is_Crs --
@@ -918,8 +924,7 @@ package body Proj4 is
 
    function Proj_Is_Crs (Obj : access constant PJ) return Boolean is
    begin
-      pragma Compile_Time_Warning (Standard.True, "Proj_Is_Crs unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Is_Crs";
+      return Libproj.Proj_H.Proj_Is_Crs(obj => Obj.Impl) /= 0;
    end Proj_Is_Crs;
 
    -------------------
@@ -928,9 +933,7 @@ package body Proj4 is
 
    function Proj_Get_Name (Obj : access constant PJ) return String is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Get_Name unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Get_Name";
+      return Interfaces.C.Strings.Value(Libproj.Proj_H.Proj_Get_Name(obj => Obj.Impl));
    end Proj_Get_Name;
 
    ---------------------------
@@ -938,13 +941,11 @@ package body Proj4 is
    ---------------------------
 
    function Proj_Get_Id_Auth_Name
-     (Obj : access constant PJ; Index : int) return String
+     (Obj : PJ; Index : Integer) return String
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Get_Id_Auth_Name unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Get_Id_Auth_Name";
+      return Interfaces.C.Strings.Value
+        (Libproj.Proj_H.Proj_Get_Id_Auth_Name (Obj => Obj.Impl, Index => int (Index)));
    end Proj_Get_Id_Auth_Name;
 
    ----------------------
@@ -952,58 +953,105 @@ package body Proj4 is
    ----------------------
 
    function Proj_Get_Id_Code
-     (Obj : access constant PJ; Index : int) return String
+     (Obj : PJ; Index : int) return String
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Get_Id_Code unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Get_Id_Code";
+      return Interfaces.C.Strings.Value
+        (Libproj.Proj_H.Proj_Get_Id_Code (Obj => Obj.Impl, Index => int (Index)));
    end Proj_Get_Id_Code;
 
    ----------------------
    -- Proj_Get_Remarks --
    ----------------------
 
-   function Proj_Get_Remarks (Obj : access constant PJ) return String is
+   function Proj_Get_Remarks (Obj : PJ) return String is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Get_Remarks unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Get_Remarks";
+      return Interfaces.C.Strings.Value
+        (Libproj.Proj_H.Proj_Get_Remarks (Obj => Obj.Impl));
    end Proj_Get_Remarks;
 
    --------------------
    -- Proj_Get_Scope --
    --------------------
 
-   function Proj_Get_Scope (Obj : access constant PJ) return String is
+   function Proj_Get_Scope (Obj : PJ) return String is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Get_Scope unimplemented");
-      return raise Program_Error with "Unimplemented function Proj_Get_Scope";
+      return Interfaces.C.Strings.Value
+        (Libproj.Proj_H.Proj_Get_Scope (Obj => Obj.Impl));
    end Proj_Get_Scope;
 
    --------------------------
    -- Proj_Get_Area_Of_Use --
    --------------------------
 
-   function Proj_Get_Area_Of_Use
+   procedure Proj_Get_Area_Of_Use
      (Ctx                  : PJ_CONTEXT;
       Obj                  : PJ'Class;
-      Out_West_Lon_Degree  : in out Long_Float;
-      Out_South_Lat_Degree : in out Long_Float;
-      Out_East_Lon_Degree  : in out Long_Float;
-      Out_North_Lat_Degree : in out Long_Float;
-      Out_Area_Name        : System.Address) return int
+      Out_West_Lon_Degree  : out Long_Float;
+      Out_South_Lat_Degree : out Long_Float;
+      Out_East_Lon_Degree  : out Long_Float;
+      Out_North_Lat_Degree : out Long_Float;
+      Out_Area_Name        : out Ada.Strings.Unbounded.Unbounded_String)
    is
+      L_Out_Area_Name : Interfaces.C.Char_Array (1 .. 1024);
+      L_Out_West_Lon_Degree  : aliased Double;
+      L_Out_South_Lat_Degree : aliased Double;
+      L_Out_East_Lon_Degree  : aliased Double;
+      L_Out_North_Lat_Degree : aliased Double;
+
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Get_Area_Of_Use unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Get_Area_Of_Use";
+      if Libproj.Proj_H.Proj_Get_Area_Of_Use
+        (Ctx                  => Ctx.Impl,
+         Obj                  => Obj.Impl,
+         Out_West_Lon_Degree  => L_Out_West_Lon_Degree'Access,
+         Out_South_Lat_Degree => L_Out_South_Lat_Degree'Access,
+         Out_East_Lon_Degree  => L_Out_East_Lon_Degree'Access,
+         Out_North_Lat_Degree => L_Out_North_Lat_Degree'Access,
+         Out_Area_Name        => L_Out_Area_Name'Address) = 0
+      then
+         raise PROJ_ERROR;
+      else
+         Out_West_Lon_Degree  := Long_Float (Out_West_Lon_Degree);
+         Out_South_Lat_Degree := Long_Float (Out_South_Lat_Degree);
+         Out_East_Lon_Degree  := Long_Float (Out_East_Lon_Degree);
+         Out_North_Lat_Degree := Long_Float (Out_North_Lat_Degree);
+         Out_Area_Name        := Ada.Strings.Unbounded.To_Unbounded_String (Interfaces.C.To_Ada(L_Out_Area_Name));
+      end if;
    end Proj_Get_Area_Of_Use;
 
+   procedure Proj_Get_Area_Of_Use
+     (Obj                  : PJ'Class;
+      Out_West_Lon_Degree  : out Long_Float;
+      Out_South_Lat_Degree : out Long_Float;
+      Out_East_Lon_Degree  : out Long_Float;
+      Out_North_Lat_Degree : out Long_Float;
+      Out_Area_Name        : out Ada.Strings.Unbounded.Unbounded_String) is
+      L_Out_Area_Name : Interfaces.C.Char_Array (1 .. 1024);
+      L_Out_West_Lon_Degree  : aliased Double;
+      L_Out_South_Lat_Degree : aliased Double;
+      L_Out_East_Lon_Degree  : aliased Double;
+      L_Out_North_Lat_Degree : aliased Double;
+
+   begin
+      if Libproj.Proj_H.Proj_Get_Area_Of_Use
+        (Ctx                  => null,
+         Obj                  => Obj.Impl,
+         Out_West_Lon_Degree  => L_Out_West_Lon_Degree'Access,
+         Out_South_Lat_Degree => L_Out_South_Lat_Degree'Access,
+         Out_East_Lon_Degree  => L_Out_East_Lon_Degree'Access,
+         Out_North_Lat_Degree => L_Out_North_Lat_Degree'Access,
+         Out_Area_Name        => L_Out_Area_Name'Address) = 0
+      then
+         raise PROJ_ERROR;
+      else
+         Out_West_Lon_Degree  := Long_Float (Out_West_Lon_Degree);
+         Out_South_Lat_Degree := Long_Float (Out_South_Lat_Degree);
+         Out_East_Lon_Degree  := Long_Float (Out_East_Lon_Degree);
+         Out_North_Lat_Degree := Long_Float (Out_North_Lat_Degree);
+         Out_Area_Name        := Ada.Strings.Unbounded.To_Unbounded_String (Interfaces.C.To_Ada(L_Out_Area_Name));
+      end if;
+
+   end;
    -----------------
    -- Proj_As_Wkt --
    -----------------
@@ -1012,7 +1060,17 @@ package body Proj4 is
      (Ctx     : access PJ_CONTEXT;
       Obj     : PJ'Class;
       C_Type  : PJ_WKT_TYPE;
-      Options : System.Address) return String
+      Options : GNAT.Strings.String_List_Access) return String
+   is
+   begin
+      pragma Compile_Time_Warning (Standard.True, "Proj_As_Wkt unimplemented");
+      return raise Program_Error with "Unimplemented function Proj_As_Wkt";
+   end Proj_As_Wkt;
+
+   function Proj_As_Wkt
+     (Obj     : PJ'Class;
+      C_Type  : PJ_WKT_TYPE;
+      Options : GNAT.Strings.String_List_Access) return String
    is
    begin
       pragma Compile_Time_Warning (Standard.True, "Proj_As_Wkt unimplemented");
@@ -1060,10 +1118,9 @@ package body Proj4 is
      (Ctx : access PJ_CONTEXT; Obj : PJ'Class) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Get_Source_Crs unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Get_Source_Crs";
+      return Ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Get_Source_Crs (Ctx => Ctx.Impl, Obj => Obj.Impl);
+      end return;
    end Proj_Get_Source_Crs;
 
    -------------------------
@@ -1074,10 +1131,9 @@ package body Proj4 is
      (Ctx : access PJ_CONTEXT; Obj : access PJ'Class) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Get_Target_Crs unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Get_Target_Crs";
+      return Ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Get_Target_Crs (Ctx => Ctx.Impl, Obj => Obj.Impl);
+      end return;
    end Proj_Get_Target_Crs;
 
    -------------------
@@ -1113,7 +1169,7 @@ package body Proj4 is
    ----------------------------------------
 
    function Proj_Get_Authorities_From_Database
-     (Ctx : access PJ_CONTEXT) return PROJ_STRING_LIST
+     (Ctx : access PJ_CONTEXT) return PROJ_STRING_LIST'class
    is
    begin
       pragma Compile_Time_Warning (Standard.True,
@@ -1127,8 +1183,10 @@ package body Proj4 is
    ----------------------------------
 
    function Proj_Get_Codes_From_Database
-     (Ctx              : access PJ_CONTEXT; Auth_Name : String; C_Type : PJ_TYPE;
-      Allow_Deprecated : int) return PROJ_STRING_LIST
+     (Ctx              : access PJ_CONTEXT;
+      Auth_Name        : String;
+      C_Type           : PJ_TYPE;
+      Allow_Deprecated : int) return PROJ_STRING_LIST'Class
    is
    begin
       pragma Compile_Time_Warning (Standard.True,
@@ -1430,10 +1488,9 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Crs : PJ'Class) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Crs_Get_Geodetic_Crs unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Crs_Get_Geodetic_Crs";
+      return Ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Crs_Get_Geodetic_Crs (Ctx => Ctx.Impl, Crs => Crs.Impl);
+      end return;
    end Proj_Crs_Get_Geodetic_Crs;
 
    -----------------------------------
@@ -1444,10 +1501,9 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Crs : PJ'Class) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Crs_Get_Horizontal_Datum unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Crs_Get_Horizontal_Datum";
+      return Ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Crs_Get_Horizontal_Datum (Ctx => Ctx.Impl, Crs => Crs.Impl);
+      end return;
    end Proj_Crs_Get_Horizontal_Datum;
 
    --------------------------
@@ -1457,13 +1513,12 @@ package body Proj4 is
    function Proj_Crs_Get_Sub_Crs
      (Ctx   : PJ_CONTEXT;
       Crs   : PJ'Class;
-      Index : int) return PJ'Class
+      Index : integer) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Crs_Get_Sub_Crs unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Crs_Get_Sub_Crs";
+      return Ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Crs_Get_Sub_Crs (Ctx => Ctx.Impl, Crs => Crs.Impl, Index => int (Index));
+      end return;
    end Proj_Crs_Get_Sub_Crs;
 
    ------------------------
@@ -1474,10 +1529,9 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Crs : PJ'Class) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Crs_Get_Datum unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Crs_Get_Datum";
+      return Ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Crs_Get_Datum (Ctx => Ctx.Impl, Crs => Crs.Impl);
+      end return;
    end Proj_Crs_Get_Datum;
 
    ------------------------------------
@@ -1488,10 +1542,9 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Crs : PJ'Class) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Crs_Get_Coordinate_System unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Crs_Get_Coordinate_System";
+      return Ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Crs_Get_Coordinate_System (Ctx => Ctx.Impl, Crs => Crs.Impl);
+      end return;
    end Proj_Crs_Get_Coordinate_System;
 
    ----------------------
@@ -1502,10 +1555,7 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Cs : PJ'Class) return PJ_COORDINATE_SYSTEM_TYPE
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Cs_Get_Type unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Cs_Get_Type";
+      return Convert_Up(Libproj.Proj_H.Proj_Cs_Get_Type (Ctx => Ctx.Impl, Cs => Cs.Impl));
    end Proj_Cs_Get_Type;
 
    ----------------------------
@@ -1553,10 +1603,9 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Obj : PJ'Class) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Get_Ellipsoid unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Get_Ellipsoid";
+      return Ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Get_Ellipsoid (Ctx => Ctx.Impl, Obj => Obj.Impl);
+      end return;
    end Proj_Get_Ellipsoid;
 
    -----------------------------------
@@ -1586,10 +1635,9 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Obj : PJ'Class) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Get_Prime_Meridian unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Get_Prime_Meridian";
+      return Ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Get_Prime_Meridian (Ctx => Ctx.Impl, Obj => Obj.Impl);
+      end return;
    end Proj_Get_Prime_Meridian;
 
    ----------------------------------------
@@ -1618,10 +1666,9 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Crs : PJ'Class) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Crs_Get_Coordoperation unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Crs_Get_Coordoperation";
+      return Ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Crs_Get_Coordoperation (Ctx => Ctx.Impl, Crs => Crs.Impl);
+      end return;
    end Proj_Crs_Get_Coordoperation;
 
    -----------------------------------------
@@ -1650,10 +1697,7 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Coordoperation : PJ'Class) return int
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Coordoperation_Is_Instantiable unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Coordoperation_Is_Instantiable";
+      return Libproj.Proj_H.Proj_Coordoperation_Is_Instantiable (Ctx => Ctx.Impl, Coordoperation => Coordoperation.Impl);
    end Proj_Coordoperation_Is_Instantiable;
 
    -----------------------------------------------------
@@ -1664,10 +1708,7 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Coordoperation : PJ'Class) return int
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Coordoperation_Has_Ballpark_Transformation unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Coordoperation_Has_Ballpark_Transformation";
+      return Libproj.Proj_H.Proj_Coordoperation_Has_Ballpark_Transformation (Ctx => Ctx.Impl, Coordoperation => Coordoperation.Impl);
    end Proj_Coordoperation_Has_Ballpark_Transformation;
 
    -----------------------------------------
@@ -1678,10 +1719,7 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Coordoperation : PJ'Class) return int
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Coordoperation_Get_Param_Count unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Coordoperation_Get_Param_Count";
+      return Libproj.Proj_H.Proj_Coordoperation_Get_Param_Count (Ctx => Ctx.Impl, Coordoperation => Coordoperation.Impl);
    end Proj_Coordoperation_Get_Param_Count;
 
    -----------------------------------------
@@ -1691,13 +1729,15 @@ package body Proj4 is
    function Proj_Coordoperation_Get_Param_Index
      (Ctx            : PJ_CONTEXT;
       Coordoperation : PJ'Class;
-      Name           : String) return int
+      Name           : String) return Integer
    is
+      Ret : int;
+      Local_Name  : Interfaces.C.Strings.chars_ptr;
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Coordoperation_Get_Param_Index unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Coordoperation_Get_Param_Index";
+      Local_Name := Interfaces.C.Strings.New_String (Name);
+      Ret := Libproj.Proj_H.Proj_Coordoperation_Get_Param_Index (Ctx => Ctx.Impl, Coordoperation => Coordoperation.Impl,name => Local_Name);
+      Interfaces.C.Strings.Free (Local_Name);
+      return Integer(ret);
    end Proj_Coordoperation_Get_Param_Index;
 
    -----------------------------------
@@ -1734,10 +1774,7 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Coordoperation : PJ'Class) return int
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Coordoperation_Get_Grid_Used_Count unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Coordoperation_Get_Grid_Used_Count";
+      return Libproj.Proj_H.Proj_Coordoperation_Get_Grid_Used_Count (Ctx => Ctx.Impl, Coordoperation => Coordoperation.Impl);
    end Proj_Coordoperation_Get_Grid_Used_Count;
 
    ---------------------------------------
@@ -1768,13 +1805,10 @@ package body Proj4 is
    --------------------------------------
 
    function Proj_Coordoperation_Get_Accuracy
-     (Ctx : PJ_CONTEXT; Obj : PJ'Class) return Double
+     (Ctx : PJ_CONTEXT; Obj : PJ'Class) return Long_Float
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Coordoperation_Get_Accuracy unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Coordoperation_Get_Accuracy";
+      return Long_Float (Libproj.Proj_H.Proj_Coordoperation_Get_Accuracy (Ctx => Ctx.Impl, Obj => Obj.Impl));
    end Proj_Coordoperation_Get_Accuracy;
 
    --------------------------------------------
@@ -1803,10 +1837,9 @@ package body Proj4 is
      (Ctx : PJ_CONTEXT; Obj : PJ'Class) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Coordoperation_Create_Inverse unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Coordoperation_Create_Inverse";
+      return ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Coordoperation_Create_Inverse (Ctx => Ctx.Impl, Obj => Obj.Impl);
+      end return;
    end Proj_Coordoperation_Create_Inverse;
 
    -----------------------------------------
@@ -1814,13 +1847,10 @@ package body Proj4 is
    -----------------------------------------
 
    function Proj_Concatoperation_Get_Step_Count
-     (Ctx : PJ_CONTEXT; Concatoperation : PJ'Class) return int
+     (Ctx : PJ_CONTEXT; Concatoperation : PJ'Class) return Integer
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Concatoperation_Get_Step_Count unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Concatoperation_Get_Step_Count";
+      return Integer(Libproj.Proj_H.Proj_Concatoperation_Get_Step_Count (Ctx => Ctx.Impl, Concatoperation => Concatoperation.Impl));
    end Proj_Concatoperation_Get_Step_Count;
 
    -----------------------------------
@@ -1830,13 +1860,12 @@ package body Proj4 is
    function Proj_Concatoperation_Get_Step
      (Ctx             : PJ_CONTEXT;
       Concatoperation : PJ'Class;
-      I_Step          : int) return PJ'Class
+      I_Step          : Integer) return PJ'Class
    is
    begin
-      pragma Compile_Time_Warning (Standard.True,
-                                   "Proj_Concatoperation_Get_Step unimplemented");
-      return raise Program_Error
-        with "Unimplemented function Proj_Concatoperation_Get_Step";
+      return ret : PJ do
+         Ret.Impl := Libproj.Proj_H.Proj_Concatoperation_Get_Step (Ctx => Ctx.Impl, Concatoperation => Concatoperation.Impl, I_Step => int (I_Step));
+      end return;
    end Proj_Concatoperation_Get_Step;
 
    ------------------------
@@ -1865,5 +1894,25 @@ package body Proj4 is
       return raise Program_Error
         with "Unimplemented function Proj_Trans_Generic";
    end Proj_Trans_Generic;
+   --------------------------
+   -- Proj_List_Operations --
+   --------------------------
 
-end Proj4;
+   function Proj_List_Operations return access constant PJ_OPERATIONS is
+   begin
+      pragma Compile_Time_Warning (Standard.True,
+                                   "Proj_List_Operations unimplemented");
+      return raise Program_Error
+        with "Unimplemented function Proj_List_Operations";
+   end Proj_List_Operations;
+   -----------------
+   -- Proj_Dmstor --
+   -----------------
+
+   function Proj_Dmstor (C_Is : String; Rs : System.Address) return Double is
+   begin
+      pragma Compile_Time_Warning (Standard.True, "Proj_Dmstor unimplemented");
+      return raise Program_Error with "Unimplemented function Proj_Dmstor";
+   end Proj_Dmstor;
+
+end PROJ;

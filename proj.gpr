@@ -1,13 +1,17 @@
--- The binding is built agains proj version 6.3.0
+-- The binding is built agains PROJ version 6.3.0
 -- Downloaded from https://proj.org/download.html
 with "libstdcpp.gpr";
-library project Proj is
+library project PROJ is
    VERSION := "6.3.0";
 
    for Languages use ("Ada");
-   for Library_Name use "aproj";
+
+   for Library_Name use "aPROJ";
+   for Library_Version use "lib" & project'Library_Name & ".so." & VERSION;
    for Source_Dirs use ("src/**");
    for Object_Dir use ".obj/" & project'Name;
    for Library_Dir use "lib";
+
    for Library_Kind use "static";
-end Proj;
+
+end PROJ;

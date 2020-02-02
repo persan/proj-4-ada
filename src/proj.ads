@@ -1,4 +1,5 @@
 with Ada.Finalization;
+with Ada.Strings.Unbounded;
 with GNAT.Strings;
 with Interfaces.C;
 with Interfaces.C.Strings;
@@ -6,7 +7,7 @@ with System;
 
 private with Libproj.Proj_H;
 private with Ada.Unchecked_Conversion;
-package Proj4 is
+package PROJ is
    use Interfaces.C;
 
    PROJ_VERSION_MAJOR : constant := 6;
@@ -52,24 +53,22 @@ package Proj4 is
    subtype PJ_OPERATIONS is PJ_LIST;
 
    type PJ_ELLPS is record
-      Id    : Interfaces.C.Strings.chars_ptr;
-      Major : Interfaces.C.Strings.chars_ptr;
-      Ell   : Interfaces.C.Strings.chars_ptr;
-      Name  : Interfaces.C.Strings.chars_ptr;
-   end record
-     with Convention => C_Pass_By_Copy;
+      Id    : Ada.Strings.Unbounded.Unbounded_String;
+      Major : Ada.Strings.Unbounded.Unbounded_String;
+      Ell   : Ada.Strings.Unbounded.Unbounded_String;
+      Name  : Ada.Strings.Unbounded.Unbounded_String;
+   end record;
 
    type PJ_UNITS is record
-      Id       : Interfaces.C.Strings.chars_ptr;
-      To_Meter : Interfaces.C.Strings.chars_ptr;
-      Name     : Interfaces.C.Strings.chars_ptr;
+      Id       : Ada.Strings.Unbounded.Unbounded_String;
+      To_Meter : Ada.Strings.Unbounded.Unbounded_String;
+      Name     : Ada.Strings.Unbounded.Unbounded_String;
       Factor   : Long_Float;
-   end record
-     with Convention => C_Pass_By_Copy;
+   end record;
 
    type PJ_PRIME_MERIDIANS is record
-      Id   : Interfaces.C.Strings.chars_ptr;
-      Defn : Interfaces.C.Strings.chars_ptr;
+      Id   : Ada.Strings.Unbounded.Unbounded_String;
+      Defn : Ada.Strings.Unbounded.Unbounded_String;
    end record
      with Convention => C_Pass_By_Copy;
 
@@ -273,6 +272,8 @@ package Proj4 is
 
    type PJ_CONTEXT is tagged limited private;
    --  Creates a new threading-context when created.
+   type PJ_DEFAULT_CONTEXT_TYPE (<>) is tagged limited private;
+   DEFAULT_CONTEXT : constant PJ_CONTEXT'Class;
 
    generic
       type User_Data_Type is limited private;
@@ -329,29 +330,30 @@ package Proj4 is
 
 
    function Create
-     (Ctx  : PJ_CONTEXT;
-      Argv : GNAT.Strings.String_List) return PJ'Class;
+     (Argv : GNAT.Strings.String_List;
+      Ctx  : PJ_CONTEXT'Class := DEFAULT_CONTEXT) return PJ;
 
    function Create
-     (Ctx        : PJ_CONTEXT;
-      Source_Crs : String;
+     (Source_Crs : String;
       Target_Crs : String;
-      Area       : PJ_AREA'class) return PJ'Class;
---
+      Area       : PJ_AREA'Class;
+      Ctx        : PJ_CONTEXT'Class := DEFAULT_CONTEXT) return PJ;
+   --
    function Create
-     (Ctx        : PJ_CONTEXT;
-      Source_Crs : PJ'Class;
+     (Source_Crs : PJ'Class;
       Target_Crs : PJ'Class;
       Area       : PJ_AREA'Class;
-      Options    : System.Address) return PJ'Class;
+      Options    : System.Address;
+      Ctx        : PJ_CONTEXT'Class := DEFAULT_CONTEXT) return PJ;
 
 
    function Normalize_For_Visualization
-     (Ctx : PJ_CONTEXT; Obj : PJ'Class) return PJ'Class;
+     (Obj  : PJ;
+      Ctx  : PJ_CONTEXT'Class := DEFAULT_CONTEXT) return PJ'Class;
 
    procedure Assign_Context (The_Pj : PJ; Ctx : PJ_CONTEXT'Class);
 
-   function Destroy (P : PJ) return PJ'Class;
+   procedure Destroy (P : PJ);
 
 
    procedure Set_Bbox
@@ -458,38 +460,42 @@ package Proj4 is
 
    function Grid_Info (Gridname : String) return PJ_GRID_INFO;
 
-   function Proj_Init_Info (Initname : String) return PJ_INIT_INFO;
+   function Init_Info (Initname : String) return PJ_INIT_INFO;
 
    -----------------------------------------------------------------------------
 
-   function Proj_List_Operations return access constant PJ_OPERATIONS;
+   function Proj_List_Operations return access constant PJ_OPERATIONS with Obsolescent => "Not implemented";
 
-   function Proj_List_Ellps return access constant PJ_ELLPS;
+   function List_Ellps return PJ_ELLPS;
 
-   function Proj_List_Units return access constant PJ_UNITS;
+   function List_Units return PJ_UNITS;
 
-   function Proj_List_Angular_Units return access constant PJ_UNITS;
+   function List_Angular_Units return PJ_UNITS;
 
-   function Proj_List_Prime_Meridians return access constant PJ_PRIME_MERIDIANS;
+   function List_Prime_Meridians return PJ_PRIME_MERIDIANS;
    --------------------------------------------------------------------------------
 
-   function Proj_Torad (Angle_In_Degrees : Double) return Double;
+   function Torad (Angle_In_Degrees : Long_Float) return Long_Float;
 
-   function Proj_Todeg (Angle_In_Radians : Double) return Double;
+   function Todeg (Angle_In_Radians : Long_Float) return Long_Float;
 
    function Proj_Dmstor (C_Is : String; Rs : System.Address) return Double;
 
-   function Proj_Rtodms
-     (S   : String;
-      R   : Double;
-      Pos : int;
-      Neg : int) return String;
+   function Rtodms
+     (R   : Double;
+      Pos : Character;
+      Neg : Character) return String;
+   --  Convert radians to string representation of degrees, minutes and seconds.
+   --  Parameters
+   --          r   Value to convert to dms-representation
+   --          pos  Character denoting positive direction, typically 'N' or 'E'.
+   --          neg  Character denoting negative direction, typically 'S' or 'W'.
 
-   procedure Proj_Cleanup;
 
-   type PROJ_STRING_LIST is new System.Address;
+   -----------------------------------------------------------------------------
 
-   subtype PJ_GUESSED_WKT_DIALECT is Unsigned;
+   type PROJ_STRING_LIST is tagged limited private;
+   type PJ_GUESSED_WKT_DIALECT is new Unsigned;
    PJ_GUESSED_WKT2_2019 : constant Unsigned := 0;
    PJ_GUESSED_WKT2_2018 : constant Unsigned := 0;
    PJ_GUESSED_WKT2_2015 : constant Unsigned := 1;
@@ -626,9 +632,7 @@ package Proj4 is
 
    type PJ_OBJ_LIST is null record;
 
-   procedure Proj_String_List_Destroy (List : PROJ_STRING_LIST);
-
-   procedure Proj_Context_Set_Autoclose_Database (Ctx : access PJ_CONTEXT; Autoclose : int);
+   procedure Set_Autoclose_Database (Ctx :  PJ_CONTEXT; Autoclose : Boolean := True);
 
    function Proj_Context_Set_Database_Path
      (Ctx        : access PJ_CONTEXT;
@@ -687,9 +691,9 @@ package Proj4 is
       LimitResultCount : Size_T;
       Options          : System.Address) return access PJ_OBJ_LIST;
 
-   function Proj_Get_Type (Obj : access constant PJ) return PJ_TYPE;
+   function Proj_Get_Type (Obj : PJ) return PJ_TYPE;
 
-   function Proj_Is_Deprecated (Obj : access constant PJ) return Boolean;
+   function Proj_Is_Deprecated (Obj : PJ) return Boolean;
 
    function Proj_Get_Non_Deprecated (Ctx : PJ_CONTEXT; Obj : PJ'Class) return access PJ_OBJ_LIST;
 
@@ -698,7 +702,7 @@ package Proj4 is
       Other     : access constant PJ;
       Criterion : PJ_COMPARISON_CRITERION) return Boolean;
 
-   function Proj_Is_Equivalent_To_With_Ctx
+   function Proj_Is_Equivalent_To
      (Ctx       : PJ_CONTEXT;
       Obj       : PJ'Class;
       Other     : PJ'Class;
@@ -708,28 +712,41 @@ package Proj4 is
 
    function Proj_Get_Name (Obj : access constant PJ) return String;
 
-   function Proj_Get_Id_Auth_Name (Obj : access constant PJ; Index : int) return String;
+   function Proj_Get_Id_Auth_Name (Obj : PJ; Index : Integer) return String;
 
-   function Proj_Get_Id_Code (Obj : access constant PJ; Index : int) return String;
+   function Proj_Get_Id_Code (Obj : PJ; Index : int) return String;
 
-   function Proj_Get_Remarks (Obj : access constant PJ) return String;
+   function Proj_Get_Remarks (Obj : PJ) return String;
 
-   function Proj_Get_Scope (Obj : access constant PJ) return String;
+   function Proj_Get_Scope (Obj : PJ) return String;
 
-   function Proj_Get_Area_Of_Use
+   procedure Proj_Get_Area_Of_Use
      (Ctx                  : PJ_CONTEXT;
       Obj                  : PJ'Class;
-      Out_West_Lon_Degree  : in out Long_Float;
-      Out_South_Lat_Degree : in out Long_Float;
-      Out_East_Lon_Degree  : in out Long_Float;
-      Out_North_Lat_Degree : in out Long_Float;
-      Out_Area_Name        : System.Address) return int;
+      Out_West_Lon_Degree  : out Long_Float;
+      Out_South_Lat_Degree : out Long_Float;
+      Out_East_Lon_Degree  : out Long_Float;
+      Out_North_Lat_Degree : out Long_Float;
+      Out_Area_Name        : out Ada.Strings.Unbounded.Unbounded_String);
+
+   procedure Proj_Get_Area_Of_Use
+     (Obj                  : PJ'Class;
+      Out_West_Lon_Degree  : out Long_Float;
+      Out_South_Lat_Degree : out Long_Float;
+      Out_East_Lon_Degree  : out Long_Float;
+      Out_North_Lat_Degree : out Long_Float;
+      Out_Area_Name        : out Ada.Strings.Unbounded.Unbounded_String);
 
    function Proj_As_Wkt
      (Ctx     : access PJ_CONTEXT;
       Obj     : PJ'Class;
       C_Type  : PJ_WKT_TYPE;
-      Options : System.Address) return String;
+      Options : GNAT.Strings.String_List_Access) return String;
+
+   function Proj_As_Wkt
+     (Obj     : PJ'Class;
+      C_Type  : PJ_WKT_TYPE;
+      Options : GNAT.Strings.String_List_Access) return String;
 
    function Proj_As_Proj_String
      (Ctx     : access PJ_CONTEXT;
@@ -755,13 +772,13 @@ package Proj4 is
 
    procedure Proj_Int_List_Destroy (List : access int);
 
-   function Proj_Get_Authorities_From_Database (Ctx : access PJ_CONTEXT) return PROJ_STRING_LIST;
+   function Proj_Get_Authorities_From_Database (Ctx : access PJ_CONTEXT) return PROJ_STRING_LIST'class;
 
    function Proj_Get_Codes_From_Database
      (Ctx              : access PJ_CONTEXT;
       Auth_Name        : String;
       C_Type           : PJ_TYPE;
-      Allow_Deprecated : int) return PROJ_STRING_LIST;
+      Allow_Deprecated : int) return PROJ_STRING_LIST'Class;
 
    function Proj_Get_Crs_List_Parameters_Create return access PROJ_CRS_LIST_PARAMETERS;
 
@@ -851,7 +868,7 @@ package Proj4 is
    function Proj_Crs_Get_Sub_Crs
      (Ctx   : PJ_CONTEXT;
       Crs   : PJ'Class;
-      Index : int) return PJ'Class;
+      Index : integer) return PJ'Class;
 
    function Proj_Crs_Get_Datum (Ctx : PJ_CONTEXT; Crs : PJ'Class) return PJ'Class;
 
@@ -911,7 +928,7 @@ package Proj4 is
    function Proj_Coordoperation_Get_Param_Index
      (Ctx            : PJ_CONTEXT;
       Coordoperation : PJ'Class;
-      Name           : String) return int;
+      Name           : String) return Integer;
 
    function Proj_Coordoperation_Get_Param
      (Ctx                  : PJ_CONTEXT;
@@ -942,7 +959,7 @@ package Proj4 is
       Out_Open_License    : access int;
       Out_Available       : access int) return int;
 
-   function Proj_Coordoperation_Get_Accuracy (Ctx : PJ_CONTEXT; Obj : PJ'Class) return Double ;
+   function Proj_Coordoperation_Get_Accuracy (Ctx : PJ_CONTEXT; Obj : PJ'Class) return Long_Float;
 
    function Proj_Coordoperation_Get_Towgs84_Values
      (Ctx                        : PJ_CONTEXT;
@@ -953,15 +970,14 @@ package Proj4 is
 
    function Proj_Coordoperation_Create_Inverse (Ctx : PJ_CONTEXT; Obj : PJ'Class) return PJ'Class;
 
-   function Proj_Concatoperation_Get_Step_Count (Ctx : PJ_CONTEXT; Concatoperation : PJ'Class) return int;
+   function Proj_Concatoperation_Get_Step_Count (Ctx : PJ_CONTEXT; Concatoperation : PJ'Class) return Integer;
 
    function Proj_Concatoperation_Get_Step
      (Ctx             : PJ_CONTEXT;
       Concatoperation : PJ'Class;
-      I_Step          : int) return PJ'Class;
+      I_Step          : Integer) return PJ'Class;
 
-   PROJ_ERROR : exception;
-
+   PROJ_ERROR     : exception;
 private
    type PJ_CONTEXT_Access is access all Libproj.Proj_H.PJ_CONTEXT with Storage_Size => 0;
    type PJ_CONTEXT is new Ada.Finalization.Limited_Controlled with record
@@ -976,6 +992,12 @@ private
    end record;
    procedure Finalize   (Object : in out PJ);
 
+   type PROJ_STRING_LIST is new Ada.Finalization.Limited_Controlled with record
+      Impl : Libproj.Proj_H.PROJ_STRING_LIST;
+   end record;
+   procedure Initialize (Object : in out PROJ_STRING_LIST);
+   procedure Finalize   (Object : in out PROJ_STRING_LIST);
+
    type PJ_AREA_Access is access all Libproj.Proj_H.PJ_AREA with Storage_Size => 0;
    type PJ_AREA is new Ada.Finalization.Limited_Controlled with record
       Impl : PJ_AREA_Access;
@@ -983,27 +1005,19 @@ private
    procedure Initialize (Object : in out PJ_AREA);
    procedure Finalize   (Object : in out PJ_AREA);
 
-   function Convert_Down is new Ada.Unchecked_Conversion (PJ_COORD, Libproj.Proj_H.PJ_COORD);
-   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_COORD, PJ_COORD);
-   pragma Compile_Time_Error (PJ_COORD'Size /= Libproj.Proj_H.PJ_COORD'Size, "Invalid maping of PJ_COORD");
+   type Package_Controler is new Ada.Finalization.Limited_Controlled with null record;
+   procedure Initialize (Object : in out Package_Controler);
+   procedure Finalize   (Object : in out Package_Controler);
+   procedure Proj_Cleanup;
+   --
+   --  This function frees global resources (grids, cache of +init files).
+   --  It Should Be Called Typically Before Process Termination,
+   --  and After Having Freed PJ and PJ_CONTEXT Objects.
 
+   type PJ_DEFAULT_CONTEXT_TYPE is new PJ_CONTEXT with null record;
+   procedure Initialize (Object : in out PJ_DEFAULT_CONTEXT_TYPE) is null;
+   procedure Finalize   (Object : in out PJ_DEFAULT_CONTEXT_TYPE) is null;
+   DEFAULT_CONTEXT : constant PJ_CONTEXT'Class := PJ_DEFAULT_CONTEXT_TYPE'(Ada.Finalization.Limited_Controlled with impl => null);
+--    function DEFAULT_CONTEXT return PJ_DEFAULT_CONTEXT_TYPE is (DEFAULT_CONTEXT_IMPL());
 
-   function Convert_Down is new Ada.Unchecked_Conversion (PJ_FACTORS, Libproj.Proj_H.PJ_FACTORS);
-   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_FACTORS, PJ_FACTORS);
-   pragma Compile_Time_Error (PJ_FACTORS'Size /= Libproj.Proj_H.PJ_FACTORS'Size, "Invalid maping of PJ_FACTORS");
-
-
-   function Convert_Down is new Ada.Unchecked_Conversion (PJ_INFO, Libproj.Proj_H.PJ_INFO);
-   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_INFO, PJ_INFO);
-   pragma Compile_Time_Error (PJ_INFO'Size /= Libproj.Proj_H.PJ_INFO'Size, "Invalid maping of PJ_INFO");
-
-   function Convert_Down is new Ada.Unchecked_Conversion (PJ_PROJ_INFO, Libproj.Proj_H.PJ_PROJ_INFO);
-   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_PROJ_INFO, PJ_PROJ_INFO);
-   pragma Compile_Time_Error (PJ_PROJ_INFO'Size /= Libproj.Proj_H.PJ_PROJ_INFO'Size, "Invalid maping of PJ_PROJ_INFO");
-
-   function Convert_Down is new Ada.Unchecked_Conversion (PJ_GRID_INFO, Libproj.Proj_H.PJ_GRID_INFO);
-   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_GRID_INFO, PJ_GRID_INFO);
-   pragma Compile_Time_Error (PJ_GRID_INFO'Size /= Libproj.Proj_H.PJ_GRID_INFO'Size, "Invalid maping of PJ_GRID_INFO");
-
-
-end Proj4;
+end PROJ;
