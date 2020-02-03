@@ -1,9 +1,11 @@
 with Ada.Command_Line;
 with Ada.Directories;
+with Ada.Streams.Stream_IO;
 
 with AUnit.Options;
 with AUnit.Reporter.Text;
 with AUnit.Reporter.XML;
+with AUnit.Reporter.Stream_XML;
 with Aunit.Run;
 with AUnit.Test_Filters.List_Filters;
 with AUnit.Test_Filters;
@@ -20,6 +22,7 @@ procedure Aunit.run.Generic_runner is
    function Run is new AUnit.Run.Test_Runner_With_Status (Suite);
    Text_Reporter       : aliased AUnit.Reporter.Text.Text_Reporter;
    XML_Reporter        : aliased AUnit.Reporter.XML.XML_Reporter;
+   XML_Stream_Reporter : aliased AUnit.Reporter.Stream_XML.XML_Reporter;
 
    Options             : aliased AUnit.Options.AUnit_Options := AUnit.Options.Default_Options;
    Filter              : aliased AUnit.Test_Filters.List_Filters.List_Filter;
@@ -28,7 +31,11 @@ procedure Aunit.run.Generic_runner is
    Use_Text            : aliased Boolean := True;
    Use_XML             : aliased Boolean := False;
 
+   XML_Report          : aliased GNAT.Strings.String_Access;
+   Outf                : Ada.Streams.Stream_IO.File_Type;
+
    Command_Line_Config : Command_Line_Configuration;
+
 
    type Reporter_Access is access all AUnit.Reporter.Reporter'Class;
    Reporter : Reporter_Access := Text_Reporter'Unrestricted_Access;
@@ -43,6 +50,7 @@ begin
 
    Define_Switch (Command_Line_Config, Use_Text'Unrestricted_Access, "", "--text", Help => "report in XML format");
    Define_Switch (Command_Line_Config, Use_XML'Unrestricted_Access, "", "--xml", Help => "Report in text format");
+   Define_Switch (Command_Line_Config, XML_Report'Unrestricted_Access, "", "--XML=", Help => "Report in XML to PATH", Argument => "PATH");
 
    GNAT.Command_Line.Getopt (Command_Line_Config);
 
@@ -50,7 +58,12 @@ begin
       Reporter := Text_Reporter'Unrestricted_Access;
    elsif Use_XML then
       Reporter := XML_Reporter'Unrestricted_Access;
+   elsif XML_Report /= null then
+      Ada.Streams.Stream_IO.Create (Outf, Mode => Ada.Streams.Stream_IO.Out_File, Name => XML_Report.all);
+      Reporter := XML_Stream_Reporter'Unrestricted_Access;
+      XML_Stream_Reporter.Set_Output (AUnit.Reporter.Stream_XML.Stream_Access (Ada.Streams.Stream_IO.Stream (Outf)));
    end if;
+
 
    if Filter_Path /= null and then Filter_Path.all'Length /= 0 then
       Filter.Read (Filter_Path.all);
@@ -66,9 +79,15 @@ begin
    else
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;
+
    if Test_List_Save /= null and then Test_List_Save.all'Length /= 0 then
       Filter.Write(Test_List_Save.all);
    end if;
+
+   if XML_Report /= null then
+      Ada.Streams.Stream_IO.Close (Outf);
+   end if;
+
 exception
    when GNAT.COMMAND_LINE.EXIT_FROM_COMMAND_LINE  | GNAT.COMMAND_LINE.INVALID_SWITCH  =>
       null;
