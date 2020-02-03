@@ -21,6 +21,7 @@ package body PROJ.Tests.pj_phi2_test is
    end;
 
    procedure PjPhi2Test_Basic (Test : in out AUnit.Test_Cases.Test_Case'Class) is
+      
    begin
       null;
 --  projCtx ctx = pj_get_default_ctx();
@@ -48,6 +49,7 @@ package body PROJ.Tests.pj_phi2_test is
    end PjPhi2Test_Basic;
 
    procedure PjPhi2Test_AvoidUndefinedBehavior (Test : in out AUnit.Test_Cases.Test_Case'Class) is
+      
    begin
       null;
 --  auto ctx = pj_get_default_ctx();

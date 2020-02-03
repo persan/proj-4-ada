@@ -14,9 +14,10 @@ private package Proj.Conversions is
    function Convert_Down (Source : PJ_INFO) return Libproj.Proj_H.PJ_INFO;
 
 
-   function Convert_Down is new Ada.Unchecked_Conversion (PJ_PROJ_INFO, Libproj.Proj_H.PJ_PROJ_INFO);
-   function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_PROJ_INFO, PJ_PROJ_INFO);
-   pragma Compile_Time_Error (PJ_PROJ_INFO'Size /= Libproj.Proj_H.PJ_PROJ_INFO'Size, "Invalid maping of PJ_PROJ_INFO");
+
+   function Convert_Up (Source : Libproj.Proj_H.PJ_PROJ_INFO) return PJ_PROJ_INFO;
+   function Convert_Down (Source : PJ_PROJ_INFO) return Libproj.Proj_H.PJ_PROJ_INFO;
+
 
    function Convert_Down is new Ada.Unchecked_Conversion (PJ_GRID_INFO, Libproj.Proj_H.PJ_GRID_INFO);
    function Convert_Up is new Ada.Unchecked_Conversion (Libproj.Proj_H.PJ_GRID_INFO, PJ_GRID_INFO);
@@ -27,7 +28,9 @@ private package Proj.Conversions is
    pragma Compile_Time_Error (PJ_INIT_INFO'Size /= Libproj.Proj_H.PJ_INIT_INFO'Size, "Invalid maping of PJ_GRID_INFO");
 
    function Convert_Up (Source : Libproj.Proj_H.PJ_ELLPS) return  PJ_ELLPS;
+
    function Convert_Up (Source : Libproj.Proj_H.PJ_UNITS) return  PJ_UNITS;
+
    function Convert_Up (Source : Libproj.Proj_H.PJ_PRIME_MERIDIANS) return PJ_PRIME_MERIDIANS;
 
    function Convert_Up (Source : Libproj.Proj_H.PJ_COORDINATE_SYSTEM_TYPE) return PJ_COORDINATE_SYSTEM_TYPE;

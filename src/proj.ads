@@ -214,14 +214,13 @@ package PROJ is
       Version    : Ada.Strings.Unbounded.Unbounded_String;
       Searchpath : Ada.Strings.Unbounded.Unbounded_String;
       Paths      : Unbounded_Vectors.Vector;
-   end record
-     with Convention => C_Pass_By_Copy;
+   end record;
 
    type PJ_PROJ_INFO is record
-      Id          : Interfaces.C.Strings.chars_ptr;
-      Description : Interfaces.C.Strings.chars_ptr;
-      Definition  : Interfaces.C.Strings.chars_ptr;
-      Has_Inverse : aliased int;
+      Id          : Ada.Strings.Unbounded.Unbounded_String;
+      Description : Ada.Strings.Unbounded.Unbounded_String;
+      Definition  : Ada.Strings.Unbounded.Unbounded_String;
+      Has_Inverse : Boolean;
       Accuracy    : Long_Float;
    end record
      with Convention => C_Pass_By_Copy;
@@ -235,26 +234,24 @@ package PROJ is
       Format     : aliased PJ_GRID_INFO_Format_Array;
       Lowerleft  : aliased PJ_LP;
       Upperright : aliased PJ_LP;
-      N_Lon      : aliased int;
-      N_Lat      : aliased int;
+      N_Lon      : aliased Integer;
+      N_Lat      : aliased Integer;
       Cs_Lon     : Long_Float;
       Cs_Lat     : Long_Float;
-   end record
-     with Convention => C_Pass_By_Copy;
+   end record;
 
-   subtype PJ_INIT_INFO_Name_Array is Interfaces.C.Char_Array (0 .. 31);
-   subtype PJ_INIT_INFO_Filename_Array is Interfaces.C.Char_Array (0 .. 259);
-   subtype PJ_INIT_INFO_Version_Array is Interfaces.C.Char_Array (0 .. 31);
-   subtype PJ_INIT_INFO_Origin_Array is Interfaces.C.Char_Array (0 .. 31);
-   subtype PJ_INIT_INFO_Lastupdate_Array is Interfaces.C.Char_Array (0 .. 15);
+   subtype PJ_INIT_INFO_Name_Array is String (1 .. 32);
+   subtype PJ_INIT_INFO_Filename_Array is String (1 .. 260);
+   subtype PJ_INIT_INFO_Version_Array is String (1 .. 32);
+   subtype PJ_INIT_INFO_Origin_Array is String (1 .. 32);
+   subtype PJ_INIT_INFO_Lastupdate_Array is String (1 .. 16);
    type PJ_INIT_INFO is record
       Name       : aliased PJ_INIT_INFO_Name_Array;
       Filename   : aliased PJ_INIT_INFO_Filename_Array;
       Version    : aliased PJ_INIT_INFO_Version_Array;
       Origin     : aliased PJ_INIT_INFO_Origin_Array;
       Lastupdate : aliased PJ_INIT_INFO_Lastupdate_Array;
-   end record
-     with Convention => C_Pass_By_Copy;
+   end record;
 
    type PJ_LOG_LEVEL is new  Unsigned;
    PJ_LOG_NONE : constant Unsigned := 0;

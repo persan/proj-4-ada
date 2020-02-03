@@ -6,11 +6,10 @@
 --  ----------------------------------------------------------------------------
 
 with AUnit.Test_Cases;
-with AUnit.Test_Cases;
-with AUnit; 
+with Ada.Text_IO;
 with GNAT.Source_Info;
+with PROJ.Images;
 package body PROJ.Tests.Gie_Self_Tests is
-   use AUnit;
    use AUnit.Test_Cases;
 
    Test_Name : constant Message_String := Format (GNAT.Source_Info.Enclosing_Entity);
@@ -210,7 +209,7 @@ package body PROJ.Tests.Gie_Self_Tests is
    
    begin
       Info := Proj.Info;
-      
+      Ada.Text_IO.Put_Line (PROJ.Images.Image (Info));
       null;
       --  PJ_INFO info;
       --  PJ_PROJ_INFO pj_info;
